@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billiard Pro — Батуми</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#0f1117;--bg2:#181c27;--bg3:#1e2333;--bg4:#252b3b;--bg5:#2d3347;
+  --b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);--b3:rgba(255,255,255,.22);
+  --t:#f0f2f7;--t2:#8b93aa;--t3:#555d72;
+  --acc:#4f8ef7;--acc-bg:#0c1f47;
+  --grn:#34c47c;--grn-bg:#0a2118;
+  --amb:#f5a623;--amb-bg:#2d1e00;
+  --red:#f04545;--red-bg:#2d0a0a;
+  --r:10px;--rlg:14px;--rxl:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);min-height:100vh;display:flex;overflow:hidden;}
+
+/* ─ LOGIN ─ */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;}
+.login-box{background:var(--bg2);border:1px solid var(--b2);border-radius:var(--rxl);padding:36px 40px;width:340px;text-align:center;}
+.login-logo{width:52px;height:52px;background:var(--acc);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+.login-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--t3);margin-bottom:24px;}
+.login-err{font-size:11px;color:var(--red);margin-top:8px;min-height:16px;}
+
+/* ─ SIDEBAR ─ */
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--b);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:20;}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--b);}
+.logo-row{display:flex;align-items:center;gap:9px;}
+.logo-icon{width:32px;height:32px;background:var(--acc);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-title{font-size:13px;font-weight:700;}
+.logo-sub{font-size:10px;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;margin-top:1px;}
+nav{padding:8px 7px;flex:1;overflow-y:auto;}
+.nav-sec{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;padding:10px 9px 5px;font-weight:700;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;font-weight:600;color:var(--t2);transition:all .15s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left;font-family:'Manrope',sans-serif;}
+.nav-item:hover{background:var(--bg3);color:var(--t);}
+.nav-item.active{background:var(--acc-bg);color:var(--acc);}
+.nav-item i{font-size:16px;flex-shrink:0;}
+.nbadge{margin-left:auto;background:var(--amb-bg);color:var(--amb);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;}
+.sidebar-foot{padding:12px 16px;border-top:1px solid var(--b);}
+.clk{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:500;}
+.clk-d{font-size:10px;color:var(--t3);margin-top:2px;}
+.logout-btn{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3);background:none;border:none;cursor:pointer;font-family:'Manrope',sans-serif;margin-top:8px;padding:4px 0;}
+.logout-btn:hover{color:var(--red);}
+
+/* ─ MAIN ─ */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--b);padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar-title{font-size:15px;font-weight:700;}
+.content{flex:1;overflow-y:auto;padding:20px 24px;}
+
+/* ─ STATS ─ */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px;}
+.stat{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rlg);padding:15px 17px;}
+.stat-l{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.stat-v{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.stat-s{font-size:10px;color:var(--t3);margin-top:3px;}
+
+/* ─ ROOM CARDS ─ */
+.rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.rc{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rlg);padding:15px;transition:border-color .2s;}
+.rc.occupied{border-color:var(--acc);background:#0e1622;}
+.rc.reserved{border-color:var(--amb);}
+.rc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.rc-name{font-size:13px;font-weight:700;}
+.rc-type{font-size:10px;color:var(--t3);margin-bottom:9px;display:flex;align-items:center;gap:4px;}
+.badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em;}
+.b-free{background:var(--grn-bg);color:var(--grn);}
+.b-busy{background:var(--acc-bg);color:var(--acc);}
+.b-res{background:var(--amb-bg);color:var(--amb);}
+.timer{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:500;color:var(--acc);}
+.timer.idle{color:var(--t3);}
+.rc-rate{font-size:10px;color:var(--t3);margin-bottom:7px;}
+.rc-client{font-size:11px;color:var(--t2);margin:3px 0;display:flex;align-items:center;gap:4px;}
+.rc-total{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--grn);margin:5px 0;}
+.rc-extras{font-size:10px;color:var(--t3);margin-bottom:7px;}
+.rc-actions{display:flex;gap:6px;margin-top:10px;}
+
+/* ─ BUTTONS ─ */
+.btn{border:1px solid var(--b2);border-radius:var(--r);background:transparent;color:var(--t);font-size:11px;font-weight:700;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s;font-family:'Manrope',sans-serif;white-space:nowrap;}
+.btn:hover{background:var(--bg3);}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--acc);border-color:var(--acc);color:#fff;}
+.btn-primary:hover{background:#3a7ee6;}
+.btn-success{background:var(--grn);border-color:var(--grn);color:#061610;font-weight:700;}
+.btn-success:hover{background:#28b06e;}
+.btn-amber{background:var(--amb-bg);border-color:var(--amb);color:var(--amb);}
+.btn-danger{border-color:var(--red-bg);color:var(--red);}
+.btn-danger:hover{background:var(--red-bg);}
+.btn-ghost{border-color:transparent;color:var(--t3);}
+.btn-ghost:hover{background:var(--bg3);color:var(--t);}
+.btn-sm{padding:5px 9px;font-size:10px;}
+.btn-full{width:100%;justify-content:center;}
+.btn[disabled]{opacity:.35;cursor:not-allowed;}
+
+/* ─ PANEL ─ */
+.panel{background:var(--bg2);border:1px solid var(--b);border-radius:var(--rlg);padding:18px;margin-bottom:14px;}
+.ptitle{font-size:11px;font-weight:700;color:var(--t);margin-bottom:14px;display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:.05em;}
+.ptitle i{color:var(--acc);font-size:15px;}
+
+/* ─ FORM ─ */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:11px;}
+.fg label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;}
+.fg input,.fg select,.fg textarea{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:12px;padding:8px 10px;font-family:'Manrope',sans-serif;transition:border-color .15s;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--acc);}
+.fg select option{background:var(--bg3);}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;}
+
+/* ─ MODAL ─ */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
+.overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--b2);border-radius:var(--rxl);padding:24px;width:480px;max-width:100%;max-height:92vh;overflow-y:auto;animation:fU .18s ease;}
+.modal-lg{width:600px;}
+@keyframes fU{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.mtitle{font-size:14px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+.mactions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+/* ─ CONFIRM MODAL ─ */
+.confirm-body{text-align:center;padding:8px 0;}
+.confirm-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px;}
+
+/* ─ SESSION MODAL ─ */
+.search-box{width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:12px;padding:7px 11px;font-family:'Manrope',sans-serif;margin-bottom:9px;}
+.search-box:focus{outline:none;border-color:var(--acc);}
+.cats-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px;}
+.cat-btn{border:1px solid var(--b2);border-radius:20px;background:transparent;color:var(--t2);font-size:10px;font-weight:700;padding:4px 11px;cursor:pointer;transition:all .15s;font-family:'Manrope',sans-serif;}
+.cat-btn:hover{background:var(--bg3);color:var(--t);}
+.cat-btn.active{background:var(--acc-bg);border-color:var(--acc);color:var(--acc);}
+.menu-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:5px;}
+.m-btn{background:var(--bg3);border:1px solid var(--b);border-radius:var(--r);color:var(--t);font-size:11px;font-weight:600;padding:8px 10px;cursor:pointer;text-align:left;transition:all .15s;font-family:'Manrope',sans-serif;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.m-btn:hover{background:var(--bg4);border-color:var(--acc);}
+.m-name{font-size:11px;line-height:1.3;}
+.m-price{font-size:10px;color:var(--acc);font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.show-all-link{font-size:11px;color:var(--acc);background:none;border:none;cursor:pointer;padding:3px 0 8px;font-family:'Manrope',sans-serif;display:inline-flex;align-items:center;gap:4px;}
+.el{display:flex;flex-direction:column;gap:5px;margin:8px 0;}
+.er{display:flex;align-items:center;gap:7px;background:var(--bg3);border-radius:var(--r);padding:7px 10px;}
+.er-name{flex:1;font-size:11px;font-weight:600;}
+.qc{display:flex;align-items:center;gap:4px;}
+.qb{width:20px;height:20px;border-radius:5px;border:1px solid var(--b2);background:var(--bg4);color:var(--t);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-family:'Manrope',sans-serif;}
+.qb:hover{border-color:var(--acc);color:var(--acc);}
+.qn{font-size:12px;font-weight:700;min-width:16px;text-align:center;font-family:'JetBrains Mono',monospace;}
+.er-sum{font-size:11px;color:var(--t2);min-width:52px;text-align:right;font-family:'JetBrains Mono',monospace;}
+.edel{border:none;background:none;color:var(--t3);cursor:pointer;font-size:14px;display:flex;padding:2px;border-radius:4px;}
+.edel:hover{color:var(--red);}
+.manual-row{display:flex;gap:5px;margin-top:5px;}
+.manual-row input{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:11px;padding:7px 9px;font-family:'Manrope',sans-serif;}
+.manual-row input:focus{outline:none;border-color:var(--acc);}
+.rbox{background:var(--bg3);border-radius:var(--r);padding:11px 13px;margin-top:11px;}
+.rr{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:5px;}
+.rdiv{border:none;border-top:1px solid var(--b2);margin:8px 0;}
+.rtot{display:flex;justify-content:space-between;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.rtot span:first-child{font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--t);}
+.rtot span:last-child{color:var(--grn);}
+.slbl{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin:11px 0 7px;}
+
+/* ─ FINAL RECEIPT ─ */
+.fi{width:58px;height:58px;background:var(--grn-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 13px;}
+.ft{font-size:38px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--grn);text-align:center;margin:5px 0 2px;}
+.fsub{font-size:11px;color:var(--t3);text-align:center;margin-bottom:16px;}
+.fbox{background:var(--bg3);border-radius:var(--r);padding:13px;margin-bottom:13px;}
+.fr{display:flex;justify-content:space-between;font-size:11px;color:var(--t2);margin-bottom:6px;}
+.fr:last-child{margin-bottom:0;}
+.fdiv{border:none;border-top:1px dashed var(--b2);margin:8px 0;}
+.fr-tot{display:flex;justify-content:space-between;font-size:14px;font-weight:700;}
+
+/* ─ SCHEDULE ─ */
+.tl-wrap{overflow-x:auto;margin-bottom:14px;padding-bottom:4px;}
+.tl{display:grid;min-width:900px;}
+.tl-hdr{display:grid;grid-template-columns:130px repeat(24,1fr);border-bottom:1px solid var(--b);padding-bottom:5px;margin-bottom:5px;}
+.tl-hc{font-size:8px;color:var(--t3);text-align:center;font-family:'JetBrains Mono',monospace;}
+.tl-row{display:grid;grid-template-columns:130px repeat(24,1fr);margin-bottom:3px;align-items:center;}
+.tl-rname{font-size:11px;font-weight:600;padding-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tc{height:26px;border-radius:3px;position:relative;cursor:pointer;border:1px solid transparent;}
+.tc.free{background:var(--bg3);border-color:var(--b);}
+.tc.free:hover{background:var(--bg4);border-color:var(--acc);}
+.tc.busy{background:var(--acc-bg);border-color:var(--acc);}
+.tc.reserved{background:var(--amb-bg);border-color:var(--amb);}
+.tc.past{background:var(--bg);border-color:var(--b);cursor:default;opacity:.4;}
+.tc.off{background:rgba(255,255,255,.02);border-color:var(--b);cursor:not-allowed;opacity:.3;}
+.sched-table{width:100%;border-collapse:collapse;font-size:11px;}
+.sched-table th{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px;text-align:left;border-bottom:1px solid var(--b);font-weight:700;}
+.sched-table td{padding:9px 8px;border-bottom:1px solid var(--b);vertical-align:middle;}
+.sched-table tr:last-child td{border-bottom:none;}
+.sched-table tr:hover td{background:var(--bg3);}
+.res-pill{display:inline-flex;align-items:center;gap:4px;background:var(--amb-bg);border:1px solid var(--amb);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--amb);}
+
+/* ─ DASHBOARD ─ */
+.dg2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.hchart{display:flex;align-items:flex-end;gap:2px;height:72px;margin-top:8px;}
+.hbar-w{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;}
+.hbar{width:100%;background:var(--acc-bg);border-radius:3px 3px 0 0;min-height:2px;transition:height .3s;}
+.hbar.peak{background:var(--acc);}
+.hlbl{font-size:7px;color:var(--t3);font-family:'JetBrains Mono',monospace;}
+
+/* ─ HISTORY TABLE ─ */
+.ht{width:100%;border-collapse:collapse;font-size:11px;}
+.ht th{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:0 9px 9px;text-align:left;border-bottom:1px solid var(--b);font-weight:700;}
+.ht td{padding:9px 9px;border-bottom:1px solid var(--b);vertical-align:middle;}
+.ht tr:last-child td{border-bottom:none;}
+.ht tr:hover td{background:var(--bg3);}
+.ha{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--grn);}
+.hd{font-family:'JetBrains Mono',monospace;color:var(--t2);font-size:10px;}
+
+/* ─ MENU SETTINGS with DnD ─ */
+.mset-row{display:flex;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid var(--b);cursor:grab;}
+.mset-row:last-child{border-bottom:none;}
+.mset-row.dragging{opacity:.4;}
+.mset-row input{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:11px;padding:6px 8px;font-family:'Manrope',sans-serif;}
+.mset-row input:focus{outline:none;border-color:var(--acc);}
+.drag-handle{color:var(--t3);font-size:14px;flex-shrink:0;cursor:grab;}
+.star-icon{font-size:13px;cursor:pointer;flex-shrink:0;}
+.star-icon.on{color:var(--amb);}
+.star-icon.off{color:var(--t3);}
+
+/* ─ ROOMS SETTINGS ─ */
+.rset-row{display:flex;align-items:center;gap:7px;padding:8px 0;border-bottom:1px solid var(--b);}
+.rset-row:last-child{border-bottom:none;}
+.rset-row input,.rset-row select{background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:11px;padding:6px 8px;font-family:'Manrope',sans-serif;}
+.rset-row input:focus,.rset-row select:focus{outline:none;border-color:var(--acc);}
+
+/* ─ PAGES ─ */
+.page{display:none;}.page.active{display:block;}
+.slbl-page{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:11px;}
+
+/* ─ MISC ─ */
+.tip{background:var(--acc-bg);border:1px solid rgba(79,142,247,.25);border-radius:var(--r);padding:8px 12px;font-size:11px;color:rgba(150,190,255,.8);display:flex;align-items:flex-start;gap:7px;margin-bottom:13px;}
+.warn{background:var(--amb-bg);border:1px solid rgba(245,166,35,.25);border-radius:var(--r);padding:8px 12px;font-size:11px;color:rgba(255,200,100,.85);display:flex;align-items:flex-start;gap:7px;margin-bottom:13px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+@media(max-width:960px){
+  .rooms-grid{grid-template-columns:1fr 1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .dg2{grid-template-columns:1fr;}
+}
+@media(max-width:640px){
+  .sidebar{width:54px;}.sidebar .logo-title,.sidebar .logo-sub,.sidebar .nav-sec,.nav-item span,.sidebar-foot .clk-d{display:none;}
+  .clk{font-size:13px;}.main{margin-left:54px;}
+  .rooms-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><i class="ti ti-circle-dot" style="color:#fff;font-size:22px;"></i></div>
+    <div class="login-title">Billiard Pro</div>
+    <div class="login-sub">Система учёта · Батуми</div>
+    <div class="fg"><label>Пароль</label>
+      <input type="password" id="login-pw" placeholder="Введите пароль" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Войти</button>
+    <div class="login-err" id="login-err"></div>
+    <div style="font-size:10px;color:var(--t3);margin-top:16px;">Пароль по умолчанию: <b style="color:var(--t2);">1234</b></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;width:100%;">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-row">
+      <div class="logo-icon"><i class="ti ti-circle-dot" style="color:#fff;font-size:16px;"></i></div>
+      <div><div class="logo-title">Billiard Pro</div><div class="logo-sub">Батуми</div></div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-sec">Управление</div>
+    <button class="nav-item active" onclick="goPage('tables',this)"><i class="ti ti-layout-grid"></i><span>Столы и залы</span></button>
+    <button class="nav-item" onclick="goPage('schedule',this)"><i class="ti ti-calendar"></i><span>Расписание</span><span class="nbadge" id="res-badge" style="display:none">0</span></button>
+    <button class="nav-item" onclick="goPage('dashboard',this)"><i class="ti ti-chart-bar"></i><span>Аналитика</span></button>
+    <div class="nav-sec">Настройки</div>
+    <button class="nav-item" onclick="goPage('menu-set',this)"><i class="ti ti-menu-2"></i><span>Меню</span></button>
+    <button class="nav-item" onclick="goPage('rooms-set',this)"><i class="ti ti-settings"></i><span>Столы / Залы</span></button>
+    <div class="nav-sec">Отчёты</div>
+    <button class="nav-item" onclick="goPage('history',this)"><i class="ti ti-history"></i><span>История смены</span></button>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="clk" id="clock">00:00:00</div>
+    <div class="clk-d" id="clock-date">—</div>
+    <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout" style="font-size:13px;"></i><span>Выйти</span></button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Столы и залы</div>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <button class="btn btn-sm" id="shift-btn" onclick="confirmEndShift()"><i class="ti ti-moon"></i> Закрыть смену</button>
+      <button class="btn btn-amber btn-sm" onclick="openBooking(null)"><i class="ti ti-calendar-plus"></i> Бронь</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- TABLES PAGE -->
+    <div class="page active" id="page-tables">
+      <div class="stats-row">
+        <div class="stat"><div class="stat-l">Активных залов</div><div class="stat-v" id="s-active">0</div><div class="stat-s">прямо сейчас</div></div>
+        <div class="stat"><div class="stat-l">Выручка смены</div><div class="stat-v" id="s-rev">0 ₾</div><div class="stat-s">только закрытые</div></div>
+        <div class="stat"><div class="stat-l">Открытый счёт</div><div class="stat-v" id="s-cur">0 ₾</div><div class="stat-s">в процессе</div></div>
+        <div class="stat"><div class="stat-l">Сессий сегодня</div><div class="stat-v" id="s-sess">0</div><div class="stat-s">завершённых</div></div>
+      </div>
+      <div class="slbl-page">Залы и столы</div>
+      <div class="rooms-grid" id="rooms-grid"></div>
+    </div>
+
+    <!-- SCHEDULE PAGE -->
+    <div class="page" id="page-schedule">
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-calendar"></i>Расписание на сегодня</div>
+        <div class="tip"><i class="ti ti-info-circle" style="flex-shrink:0;"></i>
+          Рабочее время: <b id="wh-display">15:00 — 02:00</b>. Серые ячейки — вне рабочего времени. Кликните на свободный слот для быстрой брони.
+        </div>
+        <div class="tl-wrap"><div class="tl" id="timeline"></div></div>
+        <div class="ptitle" style="margin-top:14px;"><i class="ti ti-list"></i>Все брони</div>
+        <div id="bookings-list"></div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD PAGE -->
+    <div class="page" id="page-dashboard">
+      <div class="warn"><i class="ti ti-shield" style="flex-shrink:0;"></i>
+        Аналитика строится только по закрытым чекам. Текущие незакрытые сессии не учитываются.
+      </div>
+      <div class="dg2">
+        <div class="panel" style="margin-bottom:0;">
+          <div class="ptitle"><i class="ti ti-chart-bar"></i>Загрузка по часам</div>
+          <div class="hchart" id="hour-chart"></div>
+        </div>
+        <div class="panel" style="margin-bottom:0;">
+          <div class="ptitle"><i class="ti ti-trophy"></i>Топ позиций (по заказам)</div>
+          <div id="top-menu"></div>
+        </div>
+      </div>
+      <div class="dg2" style="margin-top:14px;">
+        <div class="panel" style="margin-bottom:0;">
+          <div class="ptitle"><i class="ti ti-coin"></i>Средний чек</div>
+          <div id="avg-stats"></div>
+        </div>
+        <div class="panel" style="margin-bottom:0;">
+          <div class="ptitle"><i class="ti ti-clock"></i>Средняя длительность</div>
+          <div id="dur-stats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MENU SETTINGS PAGE -->
+    <div class="page" id="page-menu-set">
+      <div style="display:grid;grid-template-columns:190px 1fr;gap:14px;">
+        <div>
+          <div class="panel" style="padding:12px;">
+            <div class="ptitle" style="margin-bottom:10px;">Категории</div>
+            <div id="cat-sidebar"></div>
+            <div style="display:flex;gap:5px;margin-top:9px;">
+              <input id="new-cat-in" placeholder="Название..." style="flex:1;background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);font-size:11px;padding:6px 8px;font-family:'Manrope',sans-serif;">
+              <button class="btn btn-primary btn-sm" onclick="addCat()"><i class="ti ti-plus"></i></button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="ptitle"><i class="ti ti-menu-2"></i><span id="menu-set-cat-title">Все позиции</span></div>
+            <div class="tip" style="font-size:10px;"><i class="ti ti-star" style="flex-shrink:0;color:var(--amb);"></i>
+              Звезда — позиция закреплена в топ-10 быстрого доступа. Перетащите строки для изменения порядка.
+            </div>
+            <div id="menu-items-set"></div>
+            <hr style="border:none;border-top:1px solid var(--b);margin:13px 0;">
+            <div class="slbl">Добавить позицию</div>
+            <div class="fg3">
+              <div class="fg" style="margin-bottom:0;"><label>Категория</label><select id="ai-cat"></select></div>
+              <div class="fg" style="margin-bottom:0;"><label>Название</label><input id="ai-name" placeholder="Пиво 0.5л"></div>
+              <div class="fg" style="margin-bottom:0;"><label>Цена ₾</label><input id="ai-price" type="number" placeholder="5"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-top:9px;" onclick="addMenuItem()"><i class="ti ti-plus"></i> Добавить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROOMS SETTINGS PAGE -->
+    <div class="page" id="page-rooms-set">
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-settings"></i>Столы и залы</div>
+        <div id="rooms-set-list"></div>
+        <button class="btn btn-sm" style="margin-top:11px;" onclick="addRoom()"><i class="ti ti-plus"></i> Добавить</button>
+      </div>
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-currency-lari"></i>Рабочее время</div>
+        <div class="fg2">
+          <div class="fg"><label>Открытие (час)</label><input type="number" id="wh-open" value="15" min="0" max="23"></div>
+          <div class="fg"><label>Закрытие (час, след. день)</label><input type="number" id="wh-close" value="2" min="0" max="23"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveWorkHours()"><i class="ti ti-check"></i> Сохранить</button>
+      </div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div class="page" id="page-history">
+      <div class="panel">
+        <div class="ptitle"><i class="ti ti-history"></i>История смены</div>
+        <div id="hist-container"><div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div><!-- /app -->
+
+<!-- MODAL: START -->
+<div class="overlay" id="ov-start">
+  <div class="modal">
+    <div class="mtitle"><i class="ti ti-player-play" style="color:var(--acc);"></i><span id="start-t">Открыть</span></div>
+    <div class="fg2">
+      <div class="fg"><label>Клиент</label><input id="s-client" placeholder="Имя (необязательно)"></div>
+      <div class="fg"><label>Тариф ₾/час</label><input id="s-rate" type="number" value="15"></div>
+    </div>
+    <div class="fg"><label>Телефон</label><input id="s-phone" placeholder="+995..."></div>
+    <div class="mactions">
+      <button class="btn" onclick="closeOv('ov-start')">Отмена</button>
+      <button class="btn btn-primary" onclick="doStart()"><i class="ti ti-player-play"></i> Открыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SESSION -->
+<div class="overlay" id="ov-sess">
+  <div class="modal modal-lg">
+    <div class="mtitle" id="sess-title"></div>
+    <div id="sess-body"></div>
+    <div class="mactions">
+      <button class="btn" onclick="closeOv('ov-sess')">Свернуть</button>
+      <button class="btn btn-success" onclick="confirmClose()"><i class="ti ti-receipt"></i> Закрыть сессию</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRM CLOSE -->
+<div class="overlay" id="ov-confirm">
+  <div class="modal" style="width:380px;">
+    <div class="confirm-body">
+      <div class="confirm-icon" style="background:var(--grn-bg);"><i class="ti ti-receipt" style="color:var(--grn);font-size:22px;"></i></div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Закрыть сессию?</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:4px;" id="confirm-room-name"></div>
+      <div style="font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--grn);margin:12px 0 4px;" id="confirm-total"></div>
+      <div style="font-size:11px;color:var(--t3);" id="confirm-breakdown"></div>
+    </div>
+    <div class="mactions" style="justify-content:center;gap:12px;margin-top:20px;">
+      <button class="btn" onclick="closeOv('ov-confirm')">Отмена</button>
+      <button class="btn btn-success" style="padding:9px 24px;font-size:12px;" onclick="doFinalClose()"><i class="ti ti-check"></i> Подтвердить и закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: FINAL RECEIPT -->
+<div class="overlay" id="ov-receipt">
+  <div class="modal" style="width:400px;">
+    <div class="fi"><i class="ti ti-check" style="font-size:24px;color:var(--grn);"></i></div>
+    <div class="ft" id="fr-total"></div>
+    <div class="fsub" id="fr-sub"></div>
+    <div class="fbox" id="fr-details"></div>
+    <button class="btn btn-success btn-full" style="font-size:13px;padding:11px;" onclick="closeOv('ov-receipt')"><i class="ti ti-check"></i> Готово</button>
+  </div>
+</div>
+
+<!-- MODAL: BOOKING -->
+<div class="overlay" id="ov-booking">
+  <div class="modal">
+    <div class="mtitle"><i class="ti ti-calendar-plus" style="color:var(--amb);"></i>Новая бронь</div>
+    <div class="fg"><label>Зал / Стол</label><select id="bk-room"></select></div>
+    <div class="fg2">
+      <div class="fg"><label>Клиент</label><input id="bk-client" placeholder="Имя"></div>
+      <div class="fg"><label>Телефон</label><input id="bk-phone" placeholder="+995..."></div>
+    </div>
+    <div class="fg3">
+      <div class="fg"><label>Дата</label><input id="bk-date" type="date"></div>
+      <div class="fg"><label>С</label><input id="bk-from" type="time" value="15:00"></div>
+      <div class="fg"><label>До</label><input id="bk-to" type="time" value="17:00"></div>
+    </div>
+    <div class="fg"><label>Заметка</label><input id="bk-note" placeholder="Необязательно"></div>
+    <div id="bk-err" style="font-size:11px;color:var(--red);min-height:14px;margin-bottom:4px;"></div>
+    <div class="mactions">
+      <button class="btn" onclick="closeOv('ov-booking')">Отмена</button>
+      <button class="btn btn-amber" onclick="saveBooking()"><i class="ti ti-calendar-check"></i> Забронировать</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: END SHIFT CONFIRM -->
+<div class="overlay" id="ov-shift">
+  <div class="modal" style="width:380px;">
+    <div class="confirm-body">
+      <div class="confirm-icon" style="background:var(--amb-bg);"><i class="ti ti-moon" style="color:var(--amb);font-size:22px;"></i></div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px;">Закрыть смену?</div>
+      <div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Все данные смены будут сохранены в localStorage. Незакрытые сессии НЕ войдут в итог.</div>
+      <div style="font-size:11px;color:var(--t3);" id="shift-summary"></div>
+    </div>
+    <div class="mactions" style="justify-content:center;gap:12px;margin-top:18px;">
+      <button class="btn" onclick="closeOv('ov-shift')">Отмена</button>
+      <button class="btn btn-amber" style="padding:9px 24px;" onclick="doEndShift()"><i class="ti ti-moon"></i> Закрыть смену</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════ DATA ══════════════
+const ROOM_TYPES={billiard:'Бильярдный стол',snooker:'Снукерный стол',pool:'Пул стол',karaoke:'Зал Karaoke'};
+const ROOM_ICONS={billiard:'ti-circle-dot',snooker:'ti-oval',pool:'ti-circle',karaoke:'ti-microphone'};
+const DEFAULT_PW='1234';
+let workHours={open:15,close:2}; // close = hour next day if < open
+
+let rooms=[
+  {id:1,name:'Стол 1',type:'billiard',rate:15,session:null},
+  {id:2,name:'Стол 2',type:'billiard',rate:15,session:null},
+  {id:3,name:'Стол 3',type:'billiard',rate:15,session:null},
+  {id:4,name:'Снукерный стол',type:'snooker',rate:20,session:null},
+  {id:5,name:'Зал Karaoke',type:'karaoke',rate:25,session:null},
+];
+
+let menuCats=['Пиво','Безалкоголь','Горячее','Снеки','Прочее'];
+let menuItems=[
+  {id:1,cat:'Пиво',name:'Натахтари 0.5л',price:6,orders:0,starred:true},
+  {id:2,cat:'Пиво',name:'Натахтари 1л',price:10,orders:0,starred:true},
+  {id:3,cat:'Пиво',name:'Зедазени 0.5л',price:5,orders:0,starred:true},
+  {id:4,cat:'Пиво',name:'Импортное 0.33л',price:8,orders:0,starred:false},
+  {id:5,cat:'Безалкоголь',name:'Боржоми 0.5л',price:3,orders:0,starred:true},
+  {id:6,cat:'Безалкоголь',name:'Кока-кола 0.5л',price:3,orders:0,starred:true},
+  {id:7,cat:'Безалкоголь',name:'Сок 0.2л',price:2.5,orders:0,starred:false},
+  {id:8,cat:'Безалкоголь',name:'Чай',price:3,orders:0,starred:true},
+  {id:9,cat:'Безалкоголь',name:'Кофе',price:4,orders:0,starred:true},
+  {id:10,cat:'Безалкоголь',name:'Вода 0.5л',price:2,orders:0,starred:false},
+  {id:11,cat:'Горячее',name:'Хачапури',price:12,orders:0,starred:true},
+  {id:12,cat:'Горячее',name:'Хинкали (5 шт)',price:8,orders:0,starred:true},
+  {id:13,cat:'Горячее',name:'Шашлык куриный',price:18,orders:0,starred:false},
+  {id:14,cat:'Горячее',name:'Лобиани',price:10,orders:0,starred:false},
+  {id:15,cat:'Снеки',name:'Чипсы Lays',price:3.5,orders:0,starred:false},
+  {id:16,cat:'Снеки',name:'Орешки 100г',price:4,orders:0,starred:false},
+  {id:17,cat:'Снеки',name:'Сухарики',price:3,orders:0,starred:false},
+  {id:18,cat:'Снеки',name:'Шоколадный батончик',price:3,orders:0,starred:false},
+  {id:19,cat:'Прочее',name:'Мел (1 шт)',price:0.5,orders:0,starred:false},
+  {id:20,cat:'Прочее',name:'Аренда кия',price:2,orders:0,starred:false},
+];
+
+let bookings=[];
+let history=[];   // only CLOSED sessions
+let shiftRevenue=0, shiftSessions=0;
+let hourlyData=new Array(24).fill(0);
+let activeRoomId=null, sessionRoomId=null;
+let menuShowAll=false,menuSearch='',menuActiveCat=null,settingsCat=null;
+let dragSrc=null;
+
+// ══════════════ UTILS ══════════════
+const pad=n=>String(n).padStart(2,'0');
+function durStr(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return`${pad(h)}:${pad(m)}:${pad(sc)}`;}
+function fmt(n){return(+n).toFixed(2).replace('.',',')+' ₾';}
+function calcCost(s){if(!s)return 0;return(Date.now()-s.startTime)/3600000*s.rate+s.extras.reduce((a,e)=>a+e.price*e.qty,0);}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function starred10(){return menuItems.filter(m=>m.starred).slice(0,10);}
+
+// ══════════════ PERSIST ══════════════
+function save(){
+  try{
+    // Save rooms WITH active sessions (including startTime) so they survive refresh
+    localStorage.setItem('bp_rooms',JSON.stringify(rooms));
+    localStorage.setItem('bp_history',JSON.stringify(history));
+    localStorage.setItem('bp_menuItems',JSON.stringify(menuItems));
+    localStorage.setItem('bp_menuCats',JSON.stringify(menuCats));
+    localStorage.setItem('bp_bookings',JSON.stringify(bookings));
+    localStorage.setItem('bp_shiftRev',shiftRevenue);
+    localStorage.setItem('bp_shiftSess',shiftSessions);
+    localStorage.setItem('bp_workHours',JSON.stringify(workHours));
+    localStorage.setItem('bp_hourly',JSON.stringify(hourlyData));
+  }catch(e){}
+}
+function load(){
+  try{
+    const r=localStorage.getItem('bp_rooms');if(r)rooms=JSON.parse(r);
+    const h=localStorage.getItem('bp_history');if(h)history=JSON.parse(h);
+    const mi=localStorage.getItem('bp_menuItems');if(mi)menuItems=JSON.parse(mi);
+    const mc=localStorage.getItem('bp_menuCats');if(mc)menuCats=JSON.parse(mc);
+    const bk=localStorage.getItem('bp_bookings');if(bk)bookings=JSON.parse(bk);
+    const sr=localStorage.getItem('bp_shiftRev');if(sr)shiftRevenue=parseFloat(sr)||0;
+    const ss=localStorage.getItem('bp_shiftSess');if(ss)shiftSessions=parseInt(ss)||0;
+    const wh=localStorage.getItem('bp_workHours');if(wh)workHours=JSON.parse(wh);
+    const hd=localStorage.getItem('bp_hourly');if(hd)hourlyData=JSON.parse(hd);
+  }catch(e){}
+}
+
+// ══════════════ LOGIN ══════════════
+function doLogin(){
+  const pw=document.getElementById('login-pw').value;
+  if(pw===DEFAULT_PW){
+    // Store auth in localStorage so it survives page refresh (not just tab)
+    localStorage.setItem('bp_auth','1');
+    showApp();
+  } else {
+    document.getElementById('login-err').textContent='Неверный пароль';
+    document.getElementById('login-pw').value='';
+  }
+}
+function showApp(){
+  load();
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  renderRooms(); updateStats();
+}
+function doLogout(){
+  save();
+  localStorage.removeItem('bp_auth');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-pw').value='';
+  document.getElementById('login-err').textContent='';
+}
+document.getElementById('login-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// ══════════════ AUTO-LOGIN ON REFRESH ══════════════
+// If auth token exists in localStorage, skip login screen immediately
+if(localStorage.getItem('bp_auth')==='1'){
+  showApp();
+} else {
+  // Show login screen (already visible by default)
+}
+
+// ══════════════ CLOCK & TICK ══════════════
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  const d=['вс','пн','вт','ср','чт','пт','сб'];
+  document.getElementById('clock-date').textContent=`${d[n.getDay()]}, ${n.getDate()}.${pad(n.getMonth()+1)}.${n.getFullYear()}`;
+  const h=n.getHours();
+  const active=rooms.filter(r=>r.session).length;
+  if(active>0)hourlyData[h]=Math.max(hourlyData[h],active);
+}
+function tick(){
+  updateClock();
+  rooms.forEach(r=>{
+    if(!r.session)return;
+    const te=document.getElementById('tmr-'+r.id);if(te)te.textContent=durStr(Date.now()-r.session.startTime);
+    const tt=document.getElementById('tot-'+r.id);if(tt)tt.textContent=fmt(calcCost(r.session));
+  });
+  updateStats();
+  if(document.getElementById('ov-sess').classList.contains('open'))refreshSessBody();
+}
+setInterval(tick,1000);
+updateClock();
+
+// ══════════════ STATS ══════════════
+function updateStats(){
+  document.getElementById('s-active').textContent=rooms.filter(r=>r.session).length;
+  document.getElementById('s-rev').textContent=fmt(shiftRevenue);  // only closed
+  document.getElementById('s-cur').textContent=fmt(rooms.reduce((a,r)=>a+(r.session?calcCost(r.session):0),0));
+  document.getElementById('s-sess').textContent=shiftSessions;
+  const rb=document.getElementById('res-badge');
+  const n=bookings.filter(b=>b.date===todayISO()).length;
+  rb.style.display=n?'':'none'; rb.textContent=n;
+}
+
+// ══════════════ ROOMS RENDER ══════════════
+function renderRooms(){
+  const now=Date.now();
+  document.getElementById('rooms-grid').innerHTML=rooms.map(r=>{
+    const busy=!!r.session;
+    const hasRes=bookings.some(b=>b.roomId===r.id&&b.date===todayISO());
+    const dur=busy?durStr(now-r.session.startTime):'00:00:00';
+    const cost=busy?calcCost(r.session):0;
+    const extQty=busy?r.session.extras.reduce((a,e)=>a+e.qty,0):0;
+    const cls=busy?'occupied':hasRes?'reserved':'';
+    const badge=busy?`<span class="badge b-busy">Занят</span>`:hasRes?`<span class="badge b-res">Бронь</span>`:`<span class="badge b-free">Свободен</span>`;
+    return`<div class="rc ${cls}">
+      <div class="rc-head"><span class="rc-name">${r.name}</span>${badge}</div>
+      <div class="rc-type"><i class="ti ${ROOM_ICONS[r.type]||'ti-circle-dot'}" style="font-size:11px;"></i>${ROOM_TYPES[r.type]||''}</div>
+      <div class="timer${busy?'':' idle'}" id="tmr-${r.id}">${dur}</div>
+      <div class="rc-rate">${r.rate} ₾/час</div>
+      ${busy?`<div class="rc-client"><i class="ti ti-user" style="font-size:10px;"></i>${r.session.client||'—'}</div>
+      <div class="rc-total" id="tot-${r.id}">${fmt(cost)}</div>
+      ${extQty?`<div class="rc-extras"><i class="ti ti-shopping-cart" style="font-size:10px;"></i> +${extQty} поз.</div>`:''}`:'' }
+      <div class="rc-actions">
+        ${busy
+          ?`<button class="btn btn-sm" style="flex:1;" onclick="openSess(${r.id})"><i class="ti ti-eye"></i> Детали / Меню</button>`
+          :`<button class="btn btn-primary btn-sm" style="flex:1;" onclick="openStart(${r.id})"><i class="ti ti-player-play"></i> Открыть</button>
+            <button class="btn btn-amber btn-sm" onclick="openBooking(${r.id})"><i class="ti ti-calendar-plus"></i></button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════ START SESSION ══════════════
+function openStart(id){
+  activeRoomId=id;
+  const r=rooms.find(x=>x.id===id);
+  document.getElementById('start-t').textContent=`Открыть — ${r.name}`;
+  document.getElementById('s-client').value='';
+  document.getElementById('s-phone').value='';
+  document.getElementById('s-rate').value=r.rate;
+  document.getElementById('ov-start').classList.add('open');
+}
+function doStart(){
+  const r=rooms.find(x=>x.id===activeRoomId);
+  r.session={startTime:Date.now(),client:document.getElementById('s-client').value.trim(),phone:document.getElementById('s-phone').value.trim(),rate:parseFloat(document.getElementById('s-rate').value)||15,extras:[]};
+  closeOv('ov-start'); renderRooms(); save();
+}
+
+// ══════════════ SESSION DETAIL ══════════════
+function openSess(id){
+  sessionRoomId=id; menuShowAll=false; menuSearch=''; menuActiveCat=null;
+  const r=rooms.find(x=>x.id===id);
+  document.getElementById('sess-title').innerHTML=`<i class="ti ti-receipt" style="color:var(--acc);font-size:16px;"></i>${r.name}${r.session.client?' — '+r.session.client:''}`;
+  refreshSessBody();
+  document.getElementById('ov-sess').classList.add('open');
+}
+
+function sessBodyHasFocus(){
+  // Don't rebuild innerHTML if user is actively typing in an input inside the modal
+  const active=document.activeElement;
+  if(!active)return false;
+  const modal=document.getElementById('ov-sess');
+  return modal&&modal.contains(active)&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA');
+}
+
+function refreshSessBody(force){
+  const r=rooms.find(x=>x.id===sessionRoomId);
+  if(!r||!r.session)return;
+  const s=r.session;
+  const ms=Date.now()-s.startTime;
+  const tCost=(ms/3600000)*s.rate;
+  const eCost=s.extras.reduce((a,e)=>a+e.price*e.qty,0);
+
+  // If user is typing in the modal, only update the live numbers — never rebuild DOM
+  if(!force && sessBodyHasFocus()){
+    const te=document.getElementById('sess-time-display');if(te)te.textContent=durStr(ms);
+    const tce=document.getElementById('sess-table-cost');if(tce)tce.textContent=fmt(tCost);
+    const tot=document.getElementById('sess-total-display');if(tot)tot.textContent=fmt(tCost+eCost);
+    const stl=document.getElementById('sess-stol-line');if(stl)stl.textContent=`Стол (${durStr(ms)} × ${s.rate} ₾/ч)`;
+    return;
+  }
+
+  // Build menu items to display
+  let dispItems;
+  if(menuSearch.trim()){
+    dispItems=menuItems.filter(m=>m.name.toLowerCase().includes(menuSearch.toLowerCase()));
+  } else if(menuShowAll){
+    dispItems=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat):menuItems;
+  } else {
+    dispItems=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat).slice(0,10):starred10();
+  }
+  const total=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat).length:menuItems.length;
+  const canExpand=!menuSearch&&!menuShowAll&&dispItems.length>=10&&total>10;
+
+  const catTabs=menuCats.map(c=>`<button class="cat-btn${menuActiveCat===c?' active':''}" onclick="sc('${c}')">${c}</button>`).join('');
+  const allTab=`<button class="cat-btn${!menuActiveCat?' active':''}" onclick="sc(null)">⭐ Топ-10</button>`;
+  const mgrid=dispItems.length?dispItems.map(m=>`<button class="m-btn" onclick="addFM(${m.id})"><span class="m-name">${m.name}</span><span class="m-price">+${fmt(m.price)}</span></button>`).join(''):
+    `<div style="font-size:11px;color:var(--t3);grid-column:span 2;">Ничего не найдено</div>`;
+  const expandBtn=canExpand?`<button class="show-all-link" onclick="toggleAll()"><i class="ti ti-chevron-down"></i> Показать все позиции (${total})</button>`:'';
+
+  const extH=s.extras.length?s.extras.map((e,i)=>`
+    <div class="er">
+      <span class="er-name">${e.name}</span>
+      <div class="qc"><button class="qb" onclick="cq(${i},-1)">−</button><span class="qn">${e.qty}</span><button class="qb" onclick="cq(${i},1)">+</button></div>
+      <span class="er-sum">${fmt(e.price*e.qty)}</span>
+      <button class="edel" onclick="re(${i})"><i class="ti ti-x"></i></button>
+    </div>`).join(''):`<div style="font-size:11px;color:var(--t3);padding:4px 0;">Пусто</div>`;
+
+  document.getElementById('sess-body').innerHTML=`
+    <div style="display:flex;gap:18px;margin-bottom:13px;">
+      <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Время</div>
+        <div id="sess-time-display" style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--acc);">${durStr(ms)}</div></div>
+      <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Тариф</div>
+        <div style="font-size:13px;font-weight:600;color:var(--t2);">${s.rate} ₾/час</div></div>
+    </div>
+    <div class="slbl">Меню</div>
+    <input class="search-box" id="sess-search" placeholder="🔍 Поиск по меню..." value="${menuSearch}" oninput="ss(this.value)">
+    <div class="cats-bar">${allTab}${catTabs}</div>
+    <div class="menu-grid">${mgrid}</div>
+    ${expandBtn}
+    <div class="slbl">Своя позиция</div>
+    <div class="manual-row">
+      <input id="sess-mn" placeholder="Наименование" style="flex:2;">
+      <input id="sess-mp" type="number" placeholder="₾" style="width:65px;">
+      <input id="sess-mq" type="number" value="1" min="1" style="width:50px;">
+      <button class="btn btn-sm" onclick="addMan()"><i class="ti ti-plus"></i></button>
+    </div>
+    <div class="slbl" style="margin-top:11px;">В счёте</div>
+    <div class="el">${extH}</div>
+    <div class="rbox">
+      <div class="rr"><span id="sess-stol-line">Стол (${durStr(ms)} × ${s.rate} ₾/ч)</span><span id="sess-table-cost">${fmt(tCost)}</span></div>
+      <div class="rr"><span>Меню и услуги</span><span>${fmt(eCost)}</span></div>
+      <hr class="rdiv">
+      <div class="rtot"><span>Итого</span><span id="sess-total-display">${fmt(tCost+eCost)}</span></div>
+    </div>`;
+}
+
+function sc(c){menuActiveCat=c;menuShowAll=false;menuSearch='';refreshSessBody(true);}
+function ss(v){menuSearch=v;if(v)menuShowAll=true;refreshSessBody(true);}
+function toggleAll(){menuShowAll=true;refreshSessBody(true);}
+function addFM(id){
+  const it=menuItems.find(m=>m.id===id);if(!it)return;
+  it.orders++;
+  const r=rooms.find(x=>x.id===sessionRoomId);
+  const ex=r.session.extras.find(e=>e.name===it.name);
+  if(ex)ex.qty++;else r.session.extras.push({name:it.name,price:it.price,qty:1});
+  refreshSessBody(true);renderRooms();save();
+}
+function addMan(){
+  const nm=document.getElementById('sess-mn').value.trim();
+  const pr=parseFloat(document.getElementById('sess-mp').value);
+  const qt=parseInt(document.getElementById('sess-mq').value)||1;
+  if(!nm){ document.getElementById('sess-mn').focus(); return; }
+  if(!pr){ document.getElementById('sess-mp').focus(); return; }
+  const r=rooms.find(x=>x.id===sessionRoomId);
+  const ex=r.session.extras.find(e=>e.name===nm);
+  if(ex)ex.qty+=qt;else r.session.extras.push({name:nm,price:pr,qty:qt});
+  refreshSessBody(true);renderRooms();save();
+}
+function cq(i,d){const r=rooms.find(x=>x.id===sessionRoomId);r.session.extras[i].qty=Math.max(1,r.session.extras[i].qty+d);refreshSessBody(true);renderRooms();}
+function re(i){rooms.find(x=>x.id===sessionRoomId).session.extras.splice(i,1);refreshSessBody(true);renderRooms();}
+
+// ══════════════ CONFIRM → FINAL CLOSE ══════════════
+function confirmClose(){
+  const r=rooms.find(x=>x.id===sessionRoomId);
+  if(!r||!r.session)return;
+  const ms=Date.now()-r.session.startTime;
+  const tCost=(ms/3600000)*r.session.rate;
+  const eCost=r.session.extras.reduce((a,e)=>a+e.price*e.qty,0);
+  const total=tCost+eCost;
+  document.getElementById('confirm-room-name').textContent=r.name+(r.session.client?' — '+r.session.client:'');
+  document.getElementById('confirm-total').textContent=fmt(total);
+  document.getElementById('confirm-breakdown').textContent=`Стол: ${fmt(tCost)} + Меню: ${fmt(eCost)}`;
+  closeOv('ov-sess');
+  document.getElementById('ov-confirm').classList.add('open');
+}
+function doFinalClose(){
+  const r=rooms.find(x=>x.id===sessionRoomId);
+  if(!r||!r.session)return;
+  const s=r.session;
+  const ms=Date.now()-s.startTime;
+  const tCost=(ms/3600000)*s.rate;
+  const eCost=s.extras.reduce((a,e)=>a+e.price*e.qty,0);
+  const total=tCost+eCost;
+  const now=new Date();
+
+  history.unshift({room:r.name,client:s.client||'Клиент',duration:durStr(ms),total,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours()});
+  shiftRevenue+=total; shiftSessions++;
+  hourlyData[now.getHours()]=Math.max(hourlyData[now.getHours()],1);
+  r.session=null; sessionRoomId=null;
+  closeOv('ov-confirm'); renderRooms(); save();
+
+  // Final receipt
+  const h=history[0];
+  document.getElementById('fr-total').textContent=fmt(total);
+  document.getElementById('fr-sub').textContent=`${r.name}${s.client?' — '+s.client:''} · закрыт в ${now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;
+  const extRows=h.extras.length?h.extras.map(e=>`<div class="fr"><span>${e.name} × ${e.qty}</span><span>${fmt(e.price*e.qty)}</span></div>`).join('')+`<hr class="fdiv">`:'';
+  document.getElementById('fr-details').innerHTML=`
+    <div class="fr"><span>Длительность</span><span style="font-family:'JetBrains Mono',monospace;">${durStr(ms)}</span></div>
+    <div class="fr"><span>Стол (${h.rate} ₾/ч)</span><span>${fmt(h.tCost)}</span></div>
+    ${extRows}
+    <div class="fr-tot"><span>К оплате</span><span style="color:var(--grn);font-family:'JetBrains Mono',monospace;">${fmt(total)}</span></div>`;
+  document.getElementById('ov-receipt').classList.add('open');
+}
+
+// ══════════════ BOOKING ══════════════
+function isWorkHour(h){
+  const {open,close}=workHours;
+  if(open<close)return h>=open&&h<close;
+  return h>=open||h<close; // overnight
+}
+function openBooking(roomId){
+  const sel=document.getElementById('bk-room');
+  sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
+  if(roomId)sel.value=roomId;
+  document.getElementById('bk-date').value=todayISO();
+  document.getElementById('bk-client').value='';document.getElementById('bk-phone').value='';
+  document.getElementById('bk-note').value='';document.getElementById('bk-err').textContent='';
+  document.getElementById('ov-booking').classList.add('open');
+}
+function saveBooking(){
+  const date=document.getElementById('bk-date').value;
+  const from=document.getElementById('bk-from').value;
+  const to=document.getElementById('bk-to').value;
+  const errEl=document.getElementById('bk-err');
+  // Validate: not in past
+  const now=new Date();
+  const slotDT=new Date(`${date}T${from}:00`);
+  if(slotDT<now){errEl.textContent='Нельзя создать бронь в прошлом';return;}
+  if(!from||!to){errEl.textContent='Укажите время';return;}
+  if(from>=to&&!(+to.split(':')[0]<+from.split(':')[0])){errEl.textContent='Время окончания должно быть позже начала';return;}
+  // Validate: within work hours
+  const fh=+from.split(':')[0];
+  if(!isWorkHour(fh)){errEl.textContent=`Слот вне рабочего времени (${pad(workHours.open)}:00 — ${pad(workHours.close)}:00)`;return;}
+  const b={id:Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim()};
+  bookings.push(b);bookings.sort((a,b)=>a.from.localeCompare(b.from));
+  closeOv('ov-booking');renderRooms();renderSchedule();updateStats();save();
+}
+function delBooking(id){bookings=bookings.filter(b=>b.id!==id);renderSchedule();renderRooms();updateStats();save();}
+
+// ══════════════ SCHEDULE ══════════════
+function renderSchedule(){
+  const today=todayISO();
+  const nowH=new Date().getHours();
+  const nowM=new Date().getMinutes();
+  const ALL_H=Array.from({length:24},(_,i)=>i);
+
+  const hdrCells=ALL_H.map(h=>`<div class="tl-hc">${pad(h)}</div>`).join('');
+  document.getElementById('timeline').innerHTML=
+    `<div class="tl-hdr"><div class="tl-hc" style="text-align:left;padding-left:4px;">Зал</div>${hdrCells}</div>`+
+    rooms.map(r=>{
+      const cells=ALL_H.map(h=>{
+        const off=!isWorkHour(h);
+        const past=h<nowH||(h===nowH&&nowM>30);
+        const sess=r.session&&new Date(r.session.startTime).getHours()===h;
+        const res=bookings.find(b=>b.roomId===r.id&&b.date===today&&+b.from.split(':')[0]<=h&&h<+b.to.split(':')[0]);
+        if(off)return`<div class="tc off" title="Вне рабочего времени"></div>`;
+        if(sess)return`<div class="tc busy" title="Занят сейчас"></div>`;
+        if(res)return`<div class="tc reserved" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick=""></div>`;
+        if(past)return`<div class="tc past" title="Прошедшее время"></div>`;
+        return`<div class="tc free" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
+      }).join('');
+      return`<div class="tl-row"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
+    }).join('');
+
+  const tod=bookings.filter(b=>b.date===today);
+  const fut=bookings.filter(b=>b.date>today);
+  const all=[...tod,...fut];
+  document.getElementById('bookings-list').innerHTML=all.length
+    ?`<table class="sched-table"><thead><tr><th>Зал</th><th>Клиент</th><th>Телефон</th><th>Дата</th><th>Время</th><th>Заметка</th><th></th></tr></thead><tbody>
+    ${all.map(b=>{const rm=rooms.find(r=>r.id===b.roomId);return`<tr>
+      <td style="font-weight:700;">${rm?rm.name:'—'}</td>
+      <td>${b.client}</td><td style="color:var(--t2);font-size:10px;">${b.phone||'—'}</td>
+      <td style="font-size:10px;color:var(--t2);">${b.date===today?'Сегодня':b.date}</td>
+      <td><span class="res-pill"><i class="ti ti-clock" style="font-size:9px;"></i>${b.from}–${b.to}</span></td>
+      <td style="font-size:10px;color:var(--t3);">${b.note||'—'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="delBooking(${b.id})"><i class="ti ti-trash"></i></button></td>
+    </tr>`;}).join('')}</tbody></table>`
+    :`<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">Нет броней</div>`;
+}
+function quickBook(roomId,hour){
+  openBooking(roomId);
+  document.getElementById('bk-from').value=`${pad(hour)}:00`;
+  document.getElementById('bk-to').value=`${pad((hour+1)%24)}:00`;
+}
+
+// ══════════════ DASHBOARD ══════════════
+function renderDashboard(){
+  // Based ONLY on closed history
+  const HH=Array.from({length:24},(_,i)=>i);
+  const hourCounts=new Array(24).fill(0);
+  history.forEach(h=>{hourCounts[h.closeHour||0]++;});
+  const maxH=Math.max(1,...hourCounts);
+  const workHrs=HH.filter(h=>isWorkHour(h));
+  document.getElementById('hour-chart').innerHTML=workHrs.map(h=>{
+    const v=hourCounts[h];const pct=Math.round(v/maxH*100);
+    return`<div class="hbar-w"><div class="hbar${pct>50?' peak':''}" style="height:${Math.max(2,pct)}%;"></div><div class="hlbl">${h}</div></div>`;
+  }).join('');
+
+  const sorted=[...menuItems].sort((a,b)=>b.orders-a.orders).filter(m=>m.orders>0).slice(0,8);
+  document.getElementById('top-menu').innerHTML=sorted.length
+    ?sorted.map((m,i)=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">
+        <span style="font-size:10px;color:var(--t3);font-weight:700;min-width:13px;">${i+1}</span>
+        <div style="flex:1;"><div style="font-size:11px;font-weight:600;margin-bottom:2px;">${m.name}</div>
+          <div style="height:3px;background:var(--bg4);border-radius:2px;"><div style="height:3px;background:var(--acc);border-radius:2px;width:${sorted[0].orders?Math.round(m.orders/sorted[0].orders*100):0}%;"></div></div></div>
+        <span style="font-size:10px;color:var(--t2);font-family:'JetBrains Mono',monospace;">${m.orders}×</span>
+      </div>`).join('')
+    :`<div style="font-size:11px;color:var(--t3);padding:14px 0;">Нет данных — начните принимать заказы</div>`;
+
+  // Avg based only on closed
+  const avg=shiftSessions?shiftRevenue/shiftSessions:0;
+  document.getElementById('avg-stats').innerHTML=`<div style="font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--grn);margin:7px 0 3px;">${fmt(avg)}</div><div style="font-size:11px;color:var(--t3);">по ${shiftSessions} закрытым сессиям</div>`;
+
+  // Avg duration from history
+  const avgMs=history.length?history.reduce((s,h)=>{const p=h.duration.split(':');return s+(+p[0]*3600+ +p[1]*60+ +p[2])*1000;},0)/history.length:0;
+  document.getElementById('dur-stats').innerHTML=`<div style="font-size:30px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--amb);margin:7px 0 3px;">${durStr(avgMs)}</div><div style="font-size:11px;color:var(--t3);">среднее по закрытым сессиям</div>`;
+}
+
+// ══════════════ HISTORY ══════════════
+function renderHistory(){
+  const el=document.getElementById('hist-container');
+  if(!history.length){el.innerHTML='<div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div>';return;}
+  el.innerHTML=`<table class="ht"><thead><tr><th>Зал/Стол</th><th>Клиент</th><th>Длительность</th><th>Меню</th><th>Итого</th><th>Время</th></tr></thead><tbody>
+    ${history.map(h=>`<tr>
+      <td style="font-weight:700;">${h.room}</td><td style="color:var(--t2);">${h.client}</td>
+      <td class="hd">${h.duration}</td>
+      <td style="color:var(--t3);font-size:10px;">${h.extras.length?h.extras.reduce((s,e)=>s+e.qty,0)+' поз.':'—'}</td>
+      <td class="ha">${fmt(h.total)}</td>
+      <td style="color:var(--t3);font-size:10px;">${h.time}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ══════════════ MENU SETTINGS + DnD ══════════════
+let dragItemId=null;
+function renderMenuSettings(){
+  const catItems=settingsCat?menuItems.filter(m=>m.cat===settingsCat):menuItems;
+  document.getElementById('menu-set-cat-title').textContent=settingsCat||'Все позиции';
+  // Cat sidebar
+  document.getElementById('cat-sidebar').innerHTML=
+    `<button class="cat-btn${!settingsCat?' active':''}" style="width:100%;margin-bottom:3px;border-radius:var(--r);text-align:left;" onclick="setSetCat(null)">Все позиции</button>`+
+    menuCats.map(c=>`<button class="cat-btn${settingsCat===c?' active':''}" style="width:100%;margin-bottom:3px;border-radius:var(--r);text-align:left;" onclick="setSetCat('${c}')">${c}</button>`).join('');
+  // Items list
+  const s10=starred10().map(m=>m.id);
+  document.getElementById('menu-items-set').innerHTML=catItems.length
+    ?catItems.map(m=>`<div class="mset-row" draggable="true" data-id="${m.id}"
+        ondragstart="dndStart(event,${m.id})" ondragover="dndOver(event)" ondrop="dndDrop(event,${m.id})" ondragend="dndEnd()">
+        <i class="ti ti-grip-vertical drag-handle"></i>
+        <i class="ti ti-star${m.starred?'-filled on':' off'} star-icon" title="Закрепить в топ-10" onclick="toggleStar(${m.id})"></i>
+        <input value="${m.name}" style="flex:1;" onchange="menuItems.find(x=>x.id==${m.id}).name=this.value;save();">
+        <input type="number" value="${m.price}" style="width:70px;" onchange="menuItems.find(x=>x.id==${m.id}).price=parseFloat(this.value)||0;save();">
+        <span style="font-size:9px;color:var(--t3);">₾</span>
+        ${m.orders?`<span style="font-size:9px;color:var(--amb);font-weight:700;">${m.orders}×</span>`:'<span style="min-width:18px;"></span>'}
+        <button class="btn btn-danger btn-sm" onclick="delMI(${m.id})"><i class="ti ti-trash"></i></button>
+      </div>`).join('')
+    :`<div style="font-size:11px;color:var(--t3);padding:8px 0;">Нет позиций</div>`;
+  // Category select for add
+  const sel=document.getElementById('ai-cat');
+  sel.innerHTML=menuCats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(settingsCat)sel.value=settingsCat;
+}
+function setSetCat(c){settingsCat=c;renderMenuSettings();}
+function toggleStar(id){const m=menuItems.find(x=>x.id===id);m.starred=!m.starred;renderMenuSettings();save();}
+function addCat(){
+  const v=document.getElementById('new-cat-in').value.trim();
+  if(!v||menuCats.includes(v))return;
+  menuCats.push(v);document.getElementById('new-cat-in').value='';renderMenuSettings();save();
+}
+function addMenuItem(){
+  const catEl=document.getElementById('ai-cat');
+  const nameEl=document.getElementById('ai-name');
+  const priceEl=document.getElementById('ai-price');
+  const cat=catEl.value;
+  const name=nameEl.value.trim();
+  const price=parseFloat(priceEl.value);
+  if(!name){ nameEl.focus(); nameEl.style.borderColor='var(--red)'; return; }
+  if(!price){ priceEl.focus(); priceEl.style.borderColor='var(--red)'; return; }
+  nameEl.style.borderColor=''; priceEl.style.borderColor='';
+  menuItems.push({id:Date.now(),cat,name,price,orders:0,starred:false});
+  nameEl.value=''; priceEl.value='';
+  settingsCat=cat; renderMenuSettings(); save();
+}
+function delMI(id){menuItems=menuItems.filter(m=>m.id!==id);renderMenuSettings();save();}
+// DnD for menu reorder
+function dndStart(e,id){dragItemId=id;e.dataTransfer.effectAllowed='move';}
+function dndOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+function dndDrop(e,targetId){
+  e.preventDefault();
+  if(dragItemId===targetId)return;
+  const fi=menuItems.findIndex(m=>m.id===dragItemId);
+  const ti=menuItems.findIndex(m=>m.id===targetId);
+  const [item]=menuItems.splice(fi,1);
+  menuItems.splice(ti,0,item);
+  renderMenuSettings();save();
+}
+function dndEnd(){dragItemId=null;}
+
+// ══════════════ ROOMS SETTINGS ══════════════
+function renderRoomsSettings(){
+  document.getElementById('rooms-set-list').innerHTML=rooms.map(r=>`
+    <div class="rset-row">
+      <input value="${r.name}" style="flex:1;" onchange="rooms.find(x=>x.id==${r.id}).name=this.value;renderRooms();save();">
+      <select onchange="rooms.find(x=>x.id==${r.id}).type=this.value;" style="width:150px;">
+        ${Object.entries(ROOM_TYPES).map(([v,l])=>`<option value="${v}"${r.type===v?' selected':''}>${l}</option>`).join('')}
+      </select>
+      <input type="number" value="${r.rate}" style="width:68px;" onchange="rooms.find(x=>x.id==${r.id}).rate=parseFloat(this.value)||15;save();">
+      <span style="font-size:9px;color:var(--t3);">₾/ч</span>
+      <button class="btn btn-danger btn-sm" onclick="delRoom(${r.id})" ${r.session?'disabled':''}><i class="ti ti-trash"></i></button>
+    </div>`).join('');
+  document.getElementById('wh-display').textContent=`${pad(workHours.open)}:00 — ${pad(workHours.close)}:00`;
+}
+function addRoom(){const id=Math.max(0,...rooms.map(r=>r.id))+1;rooms.push({id,name:`Стол ${id}`,type:'billiard',rate:15,session:null});renderRoomsSettings();renderRooms();save();}
+function delRoom(id){if(rooms.find(r=>r.id===id).session)return;rooms=rooms.filter(r=>r.id!==id);renderRoomsSettings();renderRooms();save();}
+function saveWorkHours(){
+  workHours={open:parseInt(document.getElementById('wh-open').value)||15,close:parseInt(document.getElementById('wh-close').value)||2};
+  document.getElementById('wh-display').textContent=`${pad(workHours.open)}:00 — ${pad(workHours.close)}:00`;
+  save();
+}
+
+// ══════════════ END SHIFT ══════════════
+function confirmEndShift(){
+  document.getElementById('shift-summary').innerHTML=`Выручка: <b style="color:var(--grn);">${fmt(shiftRevenue)}</b> · Сессий: <b>${shiftSessions}</b>`;
+  document.getElementById('ov-shift').classList.add('open');
+}
+function doEndShift(){
+  save();
+  // Reset shift counters but keep history
+  shiftRevenue=0; shiftSessions=0;
+  localStorage.setItem('bp_shiftRev','0');
+  localStorage.setItem('bp_shiftSess','0');
+  closeOv('ov-shift');
+  updateStats();
+  alert('Смена закрыта. Данные сохранены в браузере.');
+}
+
+// ══════════════ NAV & OVERLAYS ══════════════
+function goPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  const titles={'tables':'Столы и залы','schedule':'Расписание','dashboard':'Аналитика','menu-set':'Настройки меню','rooms-set':'Настройки столов','history':'История смены'};
+  document.getElementById('page-title').textContent=titles[name]||name;
+  if(name==='schedule')renderSchedule();
+  if(name==='dashboard')renderDashboard();
+  if(name==='menu-set')renderMenuSettings();
+  if(name==='rooms-set')renderRoomsSettings();
+  if(name==='history')renderHistory();
+}
+function closeOv(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeOv(o.id);}));
+</script>
+</body>
+</html>

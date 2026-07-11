@@ -189,8 +189,11 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 .tc.work{box-shadow:inset 0 0 0 999px rgba(79,142,247,.035);}
 .view-switch{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
 .date-nav{display:flex;gap:5px;align-items:center;margin-left:auto;}
-.calendar-day{display:grid;grid-template-columns:88px repeat(auto-fit,minmax(140px,1fr));gap:7px;min-width:680px;}
+.calendar-day{display:grid;grid-template-columns:88px repeat(var(--room-cols),minmax(170px,1fr));gap:7px;min-width:calc(88px + var(--room-cols) * 170px);}
 .cal-hour{font:10px 'JetBrains Mono',monospace;color:var(--t3);padding-top:10px;}
+.cal-day-divider{grid-column:1/-1;background:rgba(79,142,247,.12);border-top:1px dashed var(--acc);border-bottom:1px dashed var(--acc);color:#8fb8ff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;margin:4px 0;}
+.tl-hc.next-day,.tc.next-day{box-shadow:inset 2px 0 0 var(--acc);}
+.tl-hc.next-day{color:#8fb8ff;font-weight:700;}
 .cal-slot{min-height:52px;padding:7px;border-radius:var(--r);border:1px solid var(--b);background:var(--bg3);font-size:10px;}
 .cal-slot.busy{border-color:var(--acc);background:var(--acc-bg);}.cal-slot.reserved{border-color:var(--amb);background:var(--amb-bg);}.cal-slot.closed{border-color:var(--grn);background:var(--grn-bg);}
 .force-flag{display:inline-flex;align-items:center;gap:3px;color:var(--red);font-size:9px;font-weight:700;margin-top:3px;}
@@ -499,7 +502,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 <div class="overlay" id="ov-booking">
   <div class="modal">
     <div class="mtitle"><i class="ti ti-calendar-plus" style="color:var(--amb);"></i>Новая бронь</div>
-    <div class="fg"><label>Зал / Стол</label><select id="bk-room"></select></div>
+    <div class="fg"><label>Зал / Стол</label><select id="bk-room" onchange="checkBookingTable(this.value)"></select></div>
     <div class="fg2">
       <div class="fg"><label>Клиент</label><input id="bk-client" placeholder="Имя"></div>
       <div class="fg"><label>Телефон</label><input id="bk-phone" placeholder="+995..."></div>
@@ -724,7 +727,7 @@ function renderRooms(){
       ${extQty?`<div class="rc-extras"><i class="ti ti-shopping-cart" style="font-size:10px;"></i> +${extQty} поз.</div>`:''}`:'' }
       <div class="rc-actions">
         ${busy
-          ?`<button class="btn btn-sm" style="flex:1;" onclick="openSess(${r.id})"><i class="ti ti-eye"></i> Детали / Меню</button>`
+          ?`<button class="btn btn-sm" style="flex:1;" onclick="openSess(${r.id})"><i class="ti ti-eye"></i> Детали / Меню</button><button class="btn btn-amber btn-sm" title="Создать бронь поверх активной игры" onclick="openBooking(${r.id})"><i class="ti ti-calendar-plus"></i></button>`
           :`<button class="btn btn-primary btn-sm" style="flex:1;" onclick="openStart(${r.id})"><i class="ti ti-player-play"></i> Открыть</button>
             <button class="btn btn-amber btn-sm" onclick="openBooking(${r.id})"><i class="ti ti-calendar-plus"></i></button>`}
       </div>
@@ -910,6 +913,7 @@ function openBooking(roomId,bypassWarning=false){
   document.getElementById('ov-booking').classList.add('open');
 }
 function continueForcedBooking(){closeOv('ov-active-warning');openBooking(pendingForcedRoomId,true);}
+function checkBookingTable(roomId){const r=rooms.find(x=>x.id===+roomId);if(r?.session&&!forcedBooking){pendingForcedRoomId=+roomId;closeOv('ov-booking');document.getElementById('active-warning-text').textContent=`${r.name} занят. Начало сессии: ${new Date(r.session.startTime).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}. Бронь будет помечена как принудительная.`;document.getElementById('ov-active-warning').classList.add('open');}}
 function editBooking(id){const b=bookings.find(x=>x.id===id);if(!b)return;bookingEditId=id;forcedBooking=!!b.forced;const sel=document.getElementById('bk-room');sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');sel.value=b.roomId;document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-edit" style="color:var(--amb);"></i>Редактировать бронь';['client','phone','date','from','to','note'].forEach(k=>document.getElementById('bk-'+k).value=b[k]||'');document.getElementById('bk-force-comment').value=b.forceComment||'';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent='Сохранить';document.getElementById('ov-booking').classList.add('open');}
 function saveBooking(){
   const date=document.getElementById('bk-date').value;
@@ -938,24 +942,25 @@ function renderSchedule(){
   const today=scheduleDate||todayISO();
   const nowH=new Date().getHours();
   const nowM=new Date().getMinutes();
-  const ALL_H=Array.from({length:24},(_,i)=>i);
+  // One business shift starts at opening and continues after midnight until closing.
+  const ALL_H=businessShiftHours();
 
-  const hdrCells=ALL_H.map(h=>`<div class="tl-hc">${pad(h)}</div>`).join('');
+  const hdrCells=ALL_H.map(h=>`<div class="tl-hc${h===0?' next-day':''}">${h===0?'00<br><small>след. день</small>':pad(h)}</div>`).join('');
   document.getElementById('timeline').innerHTML=
-    `<div class="tl-hdr"><div class="tl-hc" style="text-align:left;padding-left:4px;">Зал</div>${hdrCells}</div>`+
+    `<div class="tl-hdr" style="grid-template-columns:130px repeat(${ALL_H.length},1fr)"><div class="tl-hc" style="text-align:left;padding-left:4px;">Зал</div>${hdrCells}</div>`+
     rooms.map(r=>{
       const cells=ALL_H.map(h=>{
         const off=!isWorkHour(h);
-        const past=h<nowH||(h===nowH&&nowM>30);
+        const past=today===todayISO()&&(h<nowH||(h===nowH&&nowM>30));
         const sess=r.session&&new Date(r.session.startTime).getHours()===h;
         const res=bookings.find(b=>{const f=+b.from.split(':')[0],t=+b.to.split(':')[0];return b.roomId===r.id&&b.date===today&&(f<t?(f<=h&&h<t):(h>=f||h<t));});
         if(off)return`<div class="tc off" title="Вне рабочего времени"></div>`;
-        if(sess)return`<div class="tc busy" title="Занят сейчас"></div>`;
+        if(sess)return`<div class="tc busy${h===0?' next-day':''}" title="Занят сейчас — кликните для бронирования поверх игры" onclick="openBooking(${r.id})"></div>`;
         if(res)return`<div class="tc reserved" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})"></div>`;
         if(past)return`<div class="tc past" title="Прошедшее время"></div>`;
-        return`<div class="tc free work" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
+        return`<div class="tc free work${h===0?' next-day':''}" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
       }).join('');
-      return`<div class="tl-row"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
+      return`<div class="tl-row" style="grid-template-columns:130px repeat(${ALL_H.length},1fr)"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
     }).join('');
 
   document.getElementById('schedule-date').value=today;document.getElementById('schedule-title').textContent=`Расписание · ${new Date(today+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}`;
@@ -973,10 +978,11 @@ function renderSchedule(){
     :`<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">Нет броней</div>`;
   renderDayCalendar(today);
 }
+function businessShiftHours(){const out=[];for(let h=workHours.open;h!==workHours.close;h=(h+1)%24)out.push(h);return out;}
 function setScheduleView(view){scheduleView=view;document.getElementById('timeline').style.display=view==='grid'?'':'none';document.getElementById('day-calendar').style.display=view==='calendar'?'':'none';document.getElementById('view-grid').classList.toggle('btn-primary',view==='grid');document.getElementById('view-calendar').classList.toggle('btn-primary',view==='calendar');renderSchedule();}
 function setScheduleDate(date){scheduleDate=date||todayISO();renderSchedule();}
 function moveScheduleDate(delta){const d=new Date((scheduleDate||todayISO())+'T12:00');d.setDate(d.getDate()+delta);setScheduleDate(localDateISO(d));}
-function renderDayCalendar(date){const hours=Array.from({length:24},(_,i)=>i);const sessions=history.filter(h=>h.businessDate===date);document.getElementById('day-calendar').innerHTML=`<div class="calendar-day"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${hours.map(h=>`<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const booking=bookings.find(b=>b.roomId===r.id&&b.date===date&&+b.from.split(':')[0]===h);const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=active?{txt:'Открытая сессия',cls:'busy'}:booking?{txt:`${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved'}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed'}:null;return`<div class="cal-slot${x?' '+x.cls:''}">${x?x.txt:'—'}</div>`}).join('')}`).join('')}</div>`;}
+function renderDayCalendar(date){const hours=businessShiftHours(),sessions=history.filter(h=>h.businessDate===date);const cells=hours.map(h=>`${h===0?'<div class="cal-day-divider">00:00 — следующий календарный день · та же смена</div>':''}<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const booking=bookings.find(b=>b.roomId===r.id&&b.date===date&&+b.from.split(':')[0]===h);const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=active?{txt:'Открытая сессия · клик для брони',cls:'busy',click:`onclick="openBooking(${r.id})"`}:booking?{txt:`${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved',click:`onclick="editBooking(${booking.id})"`}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed',click:''}:null;return`<div class="cal-slot${x?' '+x.cls:''}" ${x?.click||`onclick="quickBook(${r.id},${h})"`}>${x?x.txt:'Свободно'}</div>`}).join('')}`).join('');document.getElementById('day-calendar').innerHTML=`<div class="calendar-day" style="--room-cols:${rooms.length}"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${cells}</div>`;}
 function quickBook(roomId,hour){
   openBooking(roomId);
   document.getElementById('bk-from').value=`${pad(hour)}:00`;

@@ -655,7 +655,7 @@ async function doLogin(){
   const email=document.getElementById('login-email').value.trim(),pw=document.getElementById('login-pw').value;
   const err=document.getElementById('login-err');err.textContent='';
   if(!email||!pw){err.textContent='Введите email и пароль';return;}
-  try{await window.firebaseSignIn(email,pw)}catch(e){err.textContent='Не удалось войти: проверьте учётные данные';}
+  try{await window.firebaseSignIn(email,pw)}catch(e){const code=e?.code||'unknown';const message=code==='auth/invalid-credential'?'Email или пароль не совпадают с записью Firebase':code==='auth/too-many-requests'?'Слишком много попыток. Подождите несколько минут и повторите':code==='auth/network-request-failed'?'Нет соединения с Firebase. Проверьте интернет':`Ошибка Firebase: ${code}`;err.textContent=message;console.warn('Firebase sign-in:',code,e);}
 }
 window.onFirebaseUser=function(user,error){
   if(!user){document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';if(error)document.getElementById('login-err').textContent=error;return;}

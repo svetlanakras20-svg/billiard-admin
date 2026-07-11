@@ -300,6 +300,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <button class="nav-item role-only" data-role="boss" onclick="goPage('audit',this)"><i class="ti ti-shield-check"></i><span>История действий</span></button>
     <div class="nav-sec">Отчёты</div>
     <button class="nav-item" onclick="goPage('history',this)"><i class="ti ti-history"></i><span>История смены</span></button>
+    <button class="nav-item" onclick="goPage('clients',this)"><i class="ti ti-users"></i><span>Клиенты</span></button>
   </nav>
   <div class="sidebar-foot">
     <div style="display:flex;align-items:center;"><div class="clk" id="clock">00:00:00</div><span class="role-chip" id="user-role">—</span></div>
@@ -433,6 +434,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
         <div id="hist-container"><div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div></div>
       </div>
     </div>
+    <div class="page" id="page-clients"><div class="panel"><div class="ptitle"><i class="ti ti-users"></i>Клиенты</div><input class="search-box" placeholder="Поиск по имени или телефону" oninput="renderClients(this.value)"><div id="clients-list"></div></div></div>
 
     <div class="page" id="page-audit">
       <div class="panel"><div class="ptitle"><i class="ti ti-shield-check"></i>История действий</div><div class="tip"><i class="ti ti-info-circle"></i>Фиксируются принудительные брони, изменения и удаления с указанием пользователя.</div><div id="audit-container"></div></div>
@@ -597,6 +599,8 @@ let menuItems=[
 ];
 
 let bookings=[];
+let clients=[], clientStatuses=['Новый','Постоянный','VIP'];
+let activeBookingGuardHours=4;
 let history=[];   // only CLOSED sessions
 let shiftRevenue=0, shiftSessions=0;
 let hourlyData=new Array(24).fill(0);
@@ -614,17 +618,21 @@ function todayISO(){return localDateISO();}
 function localDateISO(d=new Date()){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10);}
 function businessDateISO(d=new Date()){const x=new Date(d);if(x.getHours()<5)x.setDate(x.getDate()-1);return localDateISO(x);}
 function starred10(){return menuItems.filter(m=>m.starred).slice(0,10);}
+function normPhone(v){return (v||'').replace(/\D/g,'').replace(/^995/,'').replace(/^0/,'');}
+function bookingRange(b){const start=new Date(`${b.date}T${b.from}:00`),end=new Date(`${b.date}T${b.to}:00`);if(end<=start)end.setDate(end.getDate()+1);return[start,end];}
+function overlaps(a,b){const[as,ae]=bookingRange(a),[bs,be]=bookingRange(b);return as<be&&bs<ae;}
+function renderClients(q=''){const s=q.toLowerCase(),list=clients.filter(c=>!s||c.name.toLowerCase().includes(s)||c.phone.includes(normPhone(s)));document.getElementById('clients-list').innerHTML=list.length?`<table class="ht"><thead><tr><th>Клиент</th><th>Телефон</th><th>Статус</th><th>Заметки</th><th>Визиты</th></tr></thead><tbody>${list.map(c=>`<tr><td>${c.name}</td><td>${c.phone}</td><td>${c.status}</td><td>${c.notes||'—'}</td><td>${c.visits||0}</td></tr>`).join('')}</tbody></table>`:'<div style="padding:18px;color:var(--t3)">Клиентов пока нет</div>';}
 
 // ══════════════ PERSIST ══════════════
 function save(){
   try{
     // Firestore is the source of truth. localStorage is deliberately not used for business data.
-    const cloud={rooms,history,menuItems,menuCats,bookings,shiftRevenue,shiftSessions,workHours,updatedAt:Date.now()};
+    const cloud={rooms,history,menuItems,menuCats,bookings,clients,clientStatuses,activeBookingGuardHours,shiftRevenue,shiftSessions,workHours,updatedAt:Date.now()};
     if(window.firebaseSave&&currentUser)window.firebaseSave(cloud).catch(console.warn);
   }catch(e){}
 }
 function applyCloudState(data){
-  if(data.rooms)rooms=data.rooms;if(data.history)history=data.history;if(data.menuItems)menuItems=data.menuItems;if(data.menuCats)menuCats=data.menuCats;if(data.bookings)bookings=data.bookings;if(data.shiftRevenue!==undefined)shiftRevenue=data.shiftRevenue;if(data.shiftSessions!==undefined)shiftSessions=data.shiftSessions;if(data.workHours)workHours=data.workHours;
+  if(data.rooms)rooms=data.rooms;if(data.history)history=data.history;if(data.menuItems)menuItems=data.menuItems;if(data.menuCats)menuCats=data.menuCats;if(data.bookings)bookings=data.bookings;if(data.clients)clients=data.clients;if(data.clientStatuses)clientStatuses=data.clientStatuses;if(data.activeBookingGuardHours)activeBookingGuardHours=data.activeBookingGuardHours;if(data.shiftRevenue!==undefined)shiftRevenue=data.shiftRevenue;if(data.shiftSessions!==undefined)shiftSessions=data.shiftSessions;if(data.workHours)workHours=data.workHours;
   renderRooms();updateStats();if(document.getElementById('page-schedule').classList.contains('active'))renderSchedule();
 }
 function audit(action,meta={}){const entry={time:new Date().toISOString(),user:currentUser?.email||'—',action,...meta};auditLog.unshift(entry);if(window.firebaseAudit&&currentUser)window.firebaseAudit(entry).catch(console.warn);}
@@ -924,8 +932,15 @@ function saveBooking(){
   if(!isWorkHour(fh)){errEl.textContent=`Слот вне рабочего времени (${pad(workHours.open)}:00 — ${pad(workHours.close)}:00)`;return;}
   const forceComment=document.getElementById('bk-force-comment').value.trim();
   if(forcedBooking&&!forceComment){errEl.textContent='Добавьте комментарий администратора для принудительного бронирования';return;}
+  const roomId=+document.getElementById('bk-room').value;
+  const draft={date,from,to,roomId};
+  const conflict=bookings.find(x=>x.id!==bookingEditId&&x.roomId===roomId&&x.status!=='closed'&&overlaps(draft,x));
+  if(conflict){errEl.textContent=`Пересекается с бронью ${conflict.from}–${conflict.to}. Измените время или стол.`;return;}
+  const phone=normPhone(document.getElementById('bk-phone').value);
+  let clientId=null;
+  if(phone){const existing=clients.find(c=>c.phone===phone);if(existing){clientId=existing.id;document.getElementById('bk-client').value=existing.name;}else{clientId=Date.now();clients.push({id:clientId,name:document.getElementById('bk-client').value.trim()||'Клиент',phone,status:'Новый',notes:'',visits:0});}}
   const previous=bookings.find(x=>x.id===bookingEditId);
-  const b={id:bookingEditId||Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim(),forced:forcedBooking,forceComment,status:previous?.status||'future'};
+  const b={id:bookingEditId||Date.now(),roomId,client:document.getElementById('bk-client').value.trim()||'Клиент',phone,date,from,to,note:document.getElementById('bk-note').value.trim(),forced:forcedBooking,forceComment,status:previous?.status||'future',clientId};
   if(bookingEditId){bookings=bookings.map(x=>x.id===bookingEditId?b:x);audit(`Изменена бронь №${bookingEditId}`);}else{bookings.push(b);audit(forcedBooking?`Создана принудительная бронь №${b.id}`:`Создана бронь №${b.id}`,{comment:forceComment});}bookings.sort((a,b)=>a.from.localeCompare(b.from));
   closeOv('ov-booking');renderRooms();renderSchedule();updateStats();save();
 }

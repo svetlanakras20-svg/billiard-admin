@@ -545,19 +545,23 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
   const firebaseConfig={apiKey:"AIzaSyAwIBjo8H-FL0IzPJoKO4R6OR4ZfbDdw04",authDomain:"billiard-club-batumi.firebaseapp.com",projectId:"billiard-club-batumi",storageBucket:"billiard-club-batumi.firebasestorage.app",messagingSenderId:"1063963977625",appId:"1:1063963977625:web:7b6e71813eede837f79508",measurementId:"G-Y45Y7L684V"};
   const app=initializeApp(firebaseConfig); try{getAnalytics(app)}catch(e){}
-  const auth=getAuth(app), db=getFirestore(app), stateRef=doc(db,'clubs','main');
+  const auth=getAuth(app), db=getFirestore(app), club=collection(db,'clubs','main','tables');
+  const paths={tables:collection(db,'clubs','main','tables'),bookings:collection(db,'clubs','main','bookings'),menuCats:collection(db,'clubs','main','menuCategories'),menuItems:collection(db,'clubs','main','menuItems'),history:collection(db,'clubs','main','history')};
+  const settingsRef=doc(db,'clubs','main','settings','current'), auditRef=collection(db,'clubs','main','audit');
+  const cache={tables:null,bookings:null,menuCats:null,menuItems:null,history:null,settings:null}; let unsubs=[], seeded=false;
   window.firebaseSignIn=(email,password)=>signInWithEmailAndPassword(auth,email,password);
   window.firebaseSignOut=()=>signOut(auth);
-  window.firebaseSave=state=>setDoc(stateRef,state,{merge:true});
-  window.firebaseAudit=(entry)=>addDoc(collection(db,'clubs','main','audit'),{...entry,createdAt:serverTimestamp()});
-  onSnapshot(stateRef,s=>{if(s.exists()&&window.applyCloudState)window.applyCloudState(s.data())});
-  onSnapshot(query(collection(db,'clubs','main','audit'),orderBy('createdAt','desc'),limit(200)),s=>{window.applyAuditLog&&window.applyAuditLog(s.docs.map(d=>({id:d.id,...d.data(),time:d.data().createdAt?.toDate?.().toISOString()||d.data().time})));});
+  async function syncCollection(ref,items){const existing=await getDocs(ref), next=new Set(items.map(x=>String(x.id))), batch=writeBatch(db);existing.docs.forEach(d=>{if(!next.has(d.id))batch.delete(d.ref)});items.forEach((x,i)=>batch.set(doc(ref,String(x.id)),{...x,sortOrder:x.sortOrder??i,updatedAt:serverTimestamp()}));return batch.commit();}
+  window.firebaseSave=async state=>{await Promise.all([syncCollection(paths.tables,state.rooms),syncCollection(paths.bookings,state.bookings),syncCollection(paths.menuCats,state.menuCats.map((name,i)=>({id:name,name,sortOrder:i}))),syncCollection(paths.menuItems,state.menuItems),syncCollection(paths.history,state.history),setDoc(settingsRef,{workHours:state.workHours,shiftRevenue:state.shiftRevenue,shiftSessions:state.shiftSessions,updatedAt:serverTimestamp()},{merge:true})]);};
+  window.firebaseAudit=(entry)=>addDoc(auditRef,{...entry,createdAt:serverTimestamp()});
+  function emit(){if(Object.values(cache).some(v=>v===null))return;const c={...cache};window.applyCloudState&&window.applyCloudState({rooms:c.tables.sort((a,b)=>(a.sortOrder??0)-(b.sortOrder??0)),bookings:c.bookings,menuCats:c.menuCats.sort((a,b)=>(a.sortOrder??0)-(b.sortOrder??0)).map(x=>x.name),menuItems:c.menuItems,history:c.history,workHours:c.settings.workHours,shiftRevenue:c.settings.shiftRevenue||0,shiftSessions:c.settings.shiftSessions||0});}
+  function startCloud(user){unsubs.forEach(f=>f());unsubs=[];Object.entries(paths).forEach(([k,ref])=>unsubs.push(onSnapshot(ref,s=>{cache[k]=s.docs.map(d=>({id:isNaN(Number(d.id))?d.id:Number(d.id),...d.data()}));emit();if(k==='tables'&&s.empty&&!seeded&&user.role==='boss'&&window.bootstrapCloud){seeded=true;window.bootstrapCloud();}})));unsubs.push(onSnapshot(settingsRef,s=>{cache.settings=s.exists()?s.data():{};emit();}));unsubs.push(onSnapshot(query(auditRef,orderBy('createdAt','desc'),limit(200)),s=>window.applyAuditLog&&window.applyAuditLog(s.docs.map(d=>({id:d.id,...d.data(),time:d.data().createdAt?.toDate?.().toISOString()||d.data().time}))));}
   onAuthStateChanged(auth,async user=>{
     if(!user){window.onFirebaseUser&&window.onFirebaseUser(null);return;}
-    try{const profile=await getDoc(doc(db,'users',user.uid)); if(!profile.exists()||!['boss','admin'].includes(profile.data().role))throw new Error('Для учётной записи не назначена роль'); window.onFirebaseUser&&window.onFirebaseUser({uid:user.uid,email:user.email,...profile.data()});}
+    try{const profile=await getDoc(doc(db,'users',user.uid)); if(!profile.exists()||!['boss','admin'].includes(profile.data().role))throw new Error('Для учётной записи не назначена роль'); const account={uid:user.uid,email:user.email,...profile.data()};startCloud(account);window.onFirebaseUser&&window.onFirebaseUser(account);}
     catch(e){await signOut(auth);window.onFirebaseUser&&window.onFirebaseUser(null,e.message);}
   });
 </script>
@@ -606,6 +610,7 @@ let hourlyData=new Array(24).fill(0);
 let activeRoomId=null, sessionRoomId=null;
 let menuShowAll=false,menuSearch='',menuActiveCat=null,settingsCat=null;
 let dragSrc=null, currentUser=null, auditLog=[], scheduleDate=todayISO(), scheduleView='grid', bookingEditId=null, forcedBooking=false, pendingForcedRoomId=null;
+window.bootstrapCloud=()=>{if(currentUser?.role==='boss')save();};
 
 // ══════════════ UTILS ══════════════
 const pad=n=>String(n).padStart(2,'0');
@@ -620,14 +625,7 @@ function starred10(){return menuItems.filter(m=>m.starred).slice(0,10);}
 // ══════════════ PERSIST ══════════════
 function save(){
   try{
-    localStorage.setItem('bp_rooms',JSON.stringify(rooms.map(r=>({...r,session:null}))));
-    localStorage.setItem('bp_history',JSON.stringify(history));
-    localStorage.setItem('bp_menuItems',JSON.stringify(menuItems));
-    localStorage.setItem('bp_menuCats',JSON.stringify(menuCats));
-    localStorage.setItem('bp_bookings',JSON.stringify(bookings));
-    localStorage.setItem('bp_shiftRev',shiftRevenue);
-    localStorage.setItem('bp_shiftSess',shiftSessions);
-    localStorage.setItem('bp_workHours',JSON.stringify(workHours));
+    // Firestore is the source of truth. localStorage is deliberately not used for business data.
     const cloud={rooms,history,menuItems,menuCats,bookings,shiftRevenue,shiftSessions,workHours,updatedAt:Date.now()};
     if(window.firebaseSave&&currentUser)window.firebaseSave(cloud).catch(console.warn);
   }catch(e){}
@@ -661,7 +659,7 @@ async function doLogin(){
 }
 window.onFirebaseUser=function(user,error){
   if(!user){document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';if(error)document.getElementById('login-err').textContent=error;return;}
-  currentUser=user;load();document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('user-role').textContent=user.role==='boss'?'Босс':'Администратор';
+  currentUser=user;document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('user-role').textContent=user.role==='boss'?'Босс':'Администратор';
   document.querySelectorAll('.role-only').forEach(el=>el.hidden=user.role!=='boss');renderRooms();updateStats();
 };
 function doLogout(){
@@ -873,10 +871,11 @@ function doFinalClose(){
   const total=tCost+eCost;
   const now=new Date();
 
-  history.unshift({room:r.name,client:s.client||'Клиент',duration:durStr(ms),total,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours(),businessDate:businessDateISO(now)});
+  history.unshift({id:Date.now(),room:r.name,client:s.client||'Клиент',duration:durStr(ms),total,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours(),businessDate:businessDateISO(now)});
   audit(`Закрыта сессия: ${r.name}`,{businessDate:businessDateISO(now)});
   shiftRevenue+=total; shiftSessions++;
   hourlyData[now.getHours()]=Math.max(hourlyData[now.getHours()],1);
+  if(s.bookingId){const booking=bookings.find(b=>b.id===s.bookingId);if(booking)booking.status='closed';}
   r.session=null; sessionRoomId=null;
   closeOv('ov-confirm'); renderRooms(); save();
 
@@ -906,6 +905,7 @@ function openBooking(roomId,bypassWarning=false){
   const sel=document.getElementById('bk-room');
   sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if(roomId)sel.value=roomId;
+  else {const firstFree=rooms.find(r=>!r.session);if(firstFree)sel.value=firstFree.id;}
   document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-calendar-plus" style="color:var(--amb);"></i>Новая бронь';
   document.getElementById('bk-date').value=scheduleDate||todayISO();
   document.getElementById('bk-client').value='';document.getElementById('bk-phone').value='';
@@ -931,11 +931,14 @@ function saveBooking(){
   if(!isWorkHour(fh)){errEl.textContent=`Слот вне рабочего времени (${pad(workHours.open)}:00 — ${pad(workHours.close)}:00)`;return;}
   const forceComment=document.getElementById('bk-force-comment').value.trim();
   if(forcedBooking&&!forceComment){errEl.textContent='Добавьте комментарий администратора для принудительного бронирования';return;}
-  const b={id:bookingEditId||Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim(),forced:forcedBooking,forceComment};
+  const previous=bookings.find(x=>x.id===bookingEditId);
+  const b={id:bookingEditId||Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim(),forced:forcedBooking,forceComment,status:previous?.status||'future'};
   if(bookingEditId){bookings=bookings.map(x=>x.id===bookingEditId?b:x);audit(`Изменена бронь №${bookingEditId}`);}else{bookings.push(b);audit(forcedBooking?`Создана принудительная бронь №${b.id}`:`Создана бронь №${b.id}`,{comment:forceComment});}bookings.sort((a,b)=>a.from.localeCompare(b.from));
   closeOv('ov-booking');renderRooms();renderSchedule();updateStats();save();
 }
 function delBooking(id){if(!confirm(`Удалить бронь №${id}?`))return;bookings=bookings.filter(b=>b.id!==id);audit(`Удалена бронь №${id}`);renderSchedule();renderRooms();updateStats();save();}
+function bookingState(b){if(b.status==='active')return'Активная игра';const start=new Date(`${b.date}T${b.from}:00`);return start<=new Date()?'Ожидает заезда':'Будущая';}
+function checkInBooking(id){const b=bookings.find(x=>x.id===id),r=rooms.find(x=>x.id===b?.roomId);if(!b||!r)return;if(r.session){alert('Этот стол уже занят активной игрой. Используйте принудительную бронь или закройте текущую сессию.');return;}r.session={startTime:Date.now(),client:b.client,phone:b.phone,rate:r.rate,extras:[],bookingId:b.id};b.status='active';audit(`Клиент посажен по брони №${b.id}`);renderRooms();renderSchedule();save();}
 
 // ══════════════ SCHEDULE ══════════════
 function renderSchedule(){
@@ -955,8 +958,8 @@ function renderSchedule(){
         const sess=r.session&&new Date(r.session.startTime).getHours()===h;
         const res=bookings.find(b=>{const f=+b.from.split(':')[0],t=+b.to.split(':')[0];return b.roomId===r.id&&b.date===today&&(f<t?(f<=h&&h<t):(h>=f||h<t));});
         if(off)return`<div class="tc off" title="Вне рабочего времени"></div>`;
+        if(res)return`<div class="tc reserved${sess?' busy':''}" title="${sess?'Активная игра и ':''}бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})"></div>`;
         if(sess)return`<div class="tc busy${h===0?' next-day':''}" title="Занят сейчас — кликните для бронирования поверх игры" onclick="openBooking(${r.id})"></div>`;
-        if(res)return`<div class="tc reserved" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})"></div>`;
         if(past)return`<div class="tc past" title="Прошедшее время"></div>`;
         return`<div class="tc free work${h===0?' next-day':''}" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
       }).join('');
@@ -971,9 +974,9 @@ function renderSchedule(){
       <td style="font-weight:700;">${rm?rm.name:'—'}</td>
       <td>${b.client}</td><td style="color:var(--t2);font-size:10px;">${b.phone||'—'}</td>
       <td style="font-size:10px;color:var(--t2);">${b.date===today?'Сегодня':b.date}</td>
-      <td><span class="res-pill"><i class="ti ti-clock" style="font-size:9px;"></i>${b.from}–${b.to}</span></td>
+      <td><span class="res-pill"><i class="ti ti-clock" style="font-size:9px;"></i>${b.from}–${b.to}</span><div style="font-size:9px;color:var(--t3);margin-top:4px;">${bookingState(b)}</div></td>
       <td style="font-size:10px;color:var(--t3);">${b.note||'—'}${b.forced?`<div class="force-flag"><i class="ti ti-alert-triangle"></i>Принудительная${b.forceComment?`: ${b.forceComment}`:''}</div>`:''}</td>
-      <td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="editBooking(${b.id})"><i class="ti ti-edit"></i></button><button class="btn btn-danger btn-sm" onclick="delBooking(${b.id})"><i class="ti ti-trash"></i></button></td>
+      <td style="display:flex;gap:4px">${bookingState(b)==='Ожидает заезда'?`<button class="btn btn-success btn-sm" title="Посадить клиента" onclick="checkInBooking(${b.id})"><i class="ti ti-player-play"></i></button>`:''}<button class="btn btn-sm" onclick="editBooking(${b.id})"><i class="ti ti-edit"></i></button><button class="btn btn-danger btn-sm" onclick="delBooking(${b.id})"><i class="ti ti-trash"></i></button></td>
     </tr>`;}).join('')}</tbody></table>`
     :`<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">Нет броней</div>`;
   renderDayCalendar(today);
@@ -982,11 +985,15 @@ function businessShiftHours(){const out=[];for(let h=workHours.open;h!==workHour
 function setScheduleView(view){scheduleView=view;document.getElementById('timeline').style.display=view==='grid'?'':'none';document.getElementById('day-calendar').style.display=view==='calendar'?'':'none';document.getElementById('view-grid').classList.toggle('btn-primary',view==='grid');document.getElementById('view-calendar').classList.toggle('btn-primary',view==='calendar');renderSchedule();}
 function setScheduleDate(date){scheduleDate=date||todayISO();renderSchedule();}
 function moveScheduleDate(delta){const d=new Date((scheduleDate||todayISO())+'T12:00');d.setDate(d.getDate()+delta);setScheduleDate(localDateISO(d));}
-function renderDayCalendar(date){const hours=businessShiftHours(),sessions=history.filter(h=>h.businessDate===date);const cells=hours.map(h=>`${h===0?'<div class="cal-day-divider">00:00 — следующий календарный день · та же смена</div>':''}<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const booking=bookings.find(b=>b.roomId===r.id&&b.date===date&&+b.from.split(':')[0]===h);const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=active?{txt:'Открытая сессия · клик для брони',cls:'busy',click:`onclick="openBooking(${r.id})"`}:booking?{txt:`${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved',click:`onclick="editBooking(${booking.id})"`}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed',click:''}:null;return`<div class="cal-slot${x?' '+x.cls:''}" ${x?.click||`onclick="quickBook(${r.id},${h})"`}>${x?x.txt:'Свободно'}</div>`}).join('')}`).join('');document.getElementById('day-calendar').innerHTML=`<div class="calendar-day" style="--room-cols:${rooms.length}"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${cells}</div>`;}
+function renderDayCalendar(date){const hours=businessShiftHours(),sessions=history.filter(h=>h.businessDate===date);const cells=hours.map(h=>`${h===0?'<div class="cal-day-divider">00:00 — следующий календарный день · та же смена</div>':''}<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const booking=bookings.find(b=>b.roomId===r.id&&b.date===date&&+b.from.split(':')[0]===h);const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=booking?{txt:`${active?'Активная игра + ':''}${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved',click:`onclick="editBooking(${booking.id})"`}:active?{txt:'Открытая сессия · клик для брони',cls:'busy',click:`onclick="openBooking(${r.id})"`}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed',click:''}:null;return`<div class="cal-slot${x?' '+x.cls:''}" ${x?.click||`onclick="quickBook(${r.id},${h})"`}>${x?x.txt:'Свободно'}</div>`}).join('')}`).join('');document.getElementById('day-calendar').innerHTML=`<div class="calendar-day" style="--room-cols:${rooms.length}"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${cells}</div>`;}
 function quickBook(roomId,hour){
   openBooking(roomId);
-  document.getElementById('bk-from').value=`${pad(hour)}:00`;
-  document.getElementById('bk-to').value=`${pad((hour+1)%24)}:00`;
+  const now=new Date(),isToday=(scheduleDate||todayISO())===todayISO();
+  let minutes=hour*60;
+  if(isToday&&hour===now.getHours())minutes=hour*60+Math.ceil((now.getMinutes()+1)/15)*15;
+  const to=minutes+60;
+  document.getElementById('bk-from').value=`${pad(Math.floor(minutes/60)%24)}:${pad(minutes%60)}`;
+  document.getElementById('bk-to').value=`${pad(Math.floor(to/60)%24)}:${pad(to%60)}`;
 }
 
 // ══════════════ DASHBOARD ══════════════
@@ -1041,14 +1048,14 @@ function renderAudit(){
 }
 
 // ══════════════ MENU SETTINGS + DnD ══════════════
-let dragItemId=null;
+let dragItemId=null,dragRoomId=null;
 function renderMenuSettings(){
   const catItems=settingsCat?menuItems.filter(m=>m.cat===settingsCat):menuItems;
   document.getElementById('menu-set-cat-title').textContent=settingsCat||'Все позиции';
   // Cat sidebar
   document.getElementById('cat-sidebar').innerHTML=
     `<button class="cat-btn${!settingsCat?' active':''}" style="width:100%;margin-bottom:3px;border-radius:var(--r);text-align:left;" onclick="setSetCat(null)">Все позиции</button>`+
-    menuCats.map(c=>`<button class="cat-btn${settingsCat===c?' active':''}" style="width:100%;margin-bottom:3px;border-radius:var(--r);text-align:left;" onclick="setSetCat('${c}')">${c}</button>`).join('');
+    menuCats.map(c=>`<div style="display:flex;gap:3px;margin-bottom:3px;"><button class="cat-btn${settingsCat===c?' active':''}" style="flex:1;border-radius:var(--r);text-align:left;" onclick="setSetCat('${c}')">${c}</button><button class="btn btn-ghost btn-sm" title="Переименовать" onclick="renameCat('${c}')"><i class="ti ti-edit"></i></button><button class="btn btn-danger btn-sm" title="Удалить" onclick="deleteCat('${c}')"><i class="ti ti-trash"></i></button></div>`).join('');
   // Items list
   const s10=starred10().map(m=>m.id);
   document.getElementById('menu-items-set').innerHTML=catItems.length
@@ -1057,6 +1064,7 @@ function renderMenuSettings(){
         <i class="ti ti-grip-vertical drag-handle"></i>
         <i class="ti ti-star${m.starred?'-filled on':' off'} star-icon" title="Закрепить в топ-10" onclick="toggleStar(${m.id})"></i>
         <input value="${m.name}" style="flex:1;" onchange="menuItems.find(x=>x.id==${m.id}).name=this.value;save();">
+        <select style="width:115px;" onchange="moveMenuItem(${m.id},this.value)">${menuCats.map(c=>`<option value="${c}"${m.cat===c?' selected':''}>${c}</option>`).join('')}</select>
         <input type="number" value="${m.price}" style="width:70px;" onchange="menuItems.find(x=>x.id==${m.id}).price=parseFloat(this.value)||0;save();">
         <span style="font-size:9px;color:var(--t3);">₾</span>
         ${m.orders?`<span style="font-size:9px;color:var(--amb);font-weight:700;">${m.orders}×</span>`:'<span style="min-width:18px;"></span>'}
@@ -1075,6 +1083,9 @@ function addCat(){
   if(!v||menuCats.includes(v))return;
   menuCats.push(v);document.getElementById('new-cat-in').value='';renderMenuSettings();save();
 }
+function renameCat(oldName){const next=prompt('Новое название категории',oldName)?.trim();if(!next||next===oldName||menuCats.includes(next))return;menuCats=menuCats.map(c=>c===oldName?next:c);menuItems.forEach(m=>{if(m.cat===oldName)m.cat=next});if(settingsCat===oldName)settingsCat=next;audit(`Переименована категория «${oldName}» в «${next}»`);renderMenuSettings();save();}
+function deleteCat(name){const count=menuItems.filter(m=>m.cat===name).length;if(!confirm(`Удалить категорию «${name}»? Будут безвозвратно удалены все позиции внутри неё (${count}).`))return;menuCats=menuCats.filter(c=>c!==name);menuItems=menuItems.filter(m=>m.cat!==name);if(settingsCat===name)settingsCat=null;audit(`Удалена категория «${name}» и ${count} поз.`);renderMenuSettings();save();}
+function moveMenuItem(id,cat){const item=menuItems.find(m=>m.id===id);if(!item)return;item.cat=cat;audit(`Позиция «${item.name}» перенесена в «${cat}»`);renderMenuSettings();save();}
 function addMenuItem(){
   const cat=document.getElementById('ai-cat').value;
   const name=document.getElementById('ai-name').value.trim();
@@ -1102,7 +1113,8 @@ function dndEnd(){dragItemId=null;}
 // ══════════════ ROOMS SETTINGS ══════════════
 function renderRoomsSettings(){
   document.getElementById('rooms-set-list').innerHTML=rooms.map(r=>`
-    <div class="rset-row">
+    <div class="rset-row" draggable="true" ondragstart="roomDndStart(event,${r.id})" ondragover="dndOver(event)" ondrop="roomDndDrop(event,${r.id})" ondragend="dragRoomId=null">
+      <i class="ti ti-grip-vertical drag-handle" title="Перетащите для изменения порядка"></i>
       <input value="${r.name}" style="flex:1;" onchange="rooms.find(x=>x.id==${r.id}).name=this.value;renderRooms();save();">
       <select onchange="rooms.find(x=>x.id==${r.id}).type=this.value;" style="width:150px;">
         ${Object.entries(ROOM_TYPES).map(([v,l])=>`<option value="${v}"${r.type===v?' selected':''}>${l}</option>`).join('')}
@@ -1113,8 +1125,10 @@ function renderRoomsSettings(){
     </div>`).join('');
   document.getElementById('wh-display').textContent=`${pad(workHours.open)}:00 — ${pad(workHours.close)}:00`;
 }
-function addRoom(){const id=Math.max(0,...rooms.map(r=>r.id))+1;rooms.push({id,name:`Стол ${id}`,type:'billiard',rate:15,session:null});renderRoomsSettings();renderRooms();save();}
-function delRoom(id){if(rooms.find(r=>r.id===id).session)return;rooms=rooms.filter(r=>r.id!==id);renderRoomsSettings();renderRooms();save();}
+function roomDndStart(e,id){dragRoomId=id;e.dataTransfer.effectAllowed='move';}
+function roomDndDrop(e,targetId){e.preventDefault();if(dragRoomId===targetId)return;const from=rooms.findIndex(r=>r.id===dragRoomId),to=rooms.findIndex(r=>r.id===targetId);rooms.splice(to,0,rooms.splice(from,1)[0]);rooms.forEach((r,i)=>r.sortOrder=i);audit('Изменён порядок столов');renderRoomsSettings();renderRooms();if(document.getElementById('page-schedule').classList.contains('active'))renderSchedule();save();}
+function addRoom(){const id=Math.max(0,...rooms.map(r=>r.id))+1;rooms.push({id,name:`Стол ${id}`,type:'billiard',rate:15,session:null,sortOrder:rooms.length});renderRoomsSettings();renderRooms();if(document.getElementById('page-schedule').classList.contains('active'))renderSchedule();save();}
+function delRoom(id){if(rooms.find(r=>r.id===id).session)return;rooms=rooms.filter(r=>r.id!==id);rooms.forEach((r,i)=>r.sortOrder=i);renderRoomsSettings();renderRooms();if(document.getElementById('page-schedule').classList.contains('active'))renderSchedule();save();}
 function saveWorkHours(){
   workHours={open:parseInt(document.getElementById('wh-open').value)||15,close:parseInt(document.getElementById('wh-close').value)||2};
   document.getElementById('wh-display').textContent=`${pad(workHours.open)}:00 — ${pad(workHours.close)}:00`;

@@ -545,25 +545,18 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, getDocs, setDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, writeBatch } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
   const firebaseConfig={apiKey:"AIzaSyAwIBjo8H-FL0IzPJoKO4R6OR4ZfbDdw04",authDomain:"billiard-club-batumi.firebaseapp.com",projectId:"billiard-club-batumi",storageBucket:"billiard-club-batumi.firebasestorage.app",messagingSenderId:"1063963977625",appId:"1:1063963977625:web:7b6e71813eede837f79508",measurementId:"G-Y45Y7L684V"};
   const app=initializeApp(firebaseConfig); try{getAnalytics(app)}catch(e){}
-  const auth=getAuth(app), db=getFirestore(app), club=collection(db,'clubs','main','tables');
-  const paths={tables:collection(db,'clubs','main','tables'),bookings:collection(db,'clubs','main','bookings'),menuCats:collection(db,'clubs','main','menuCategories'),menuItems:collection(db,'clubs','main','menuItems'),history:collection(db,'clubs','main','history')};
-  const settingsRef=doc(db,'clubs','main','settings','current'), auditRef=collection(db,'clubs','main','audit');
-  const cache={tables:null,bookings:null,menuCats:null,menuItems:null,history:null,settings:null}; let unsubs=[], seeded=false;
+  const auth=getAuth(app),db=getFirestore(app),stateRef=doc(db,'clubs','main'),auditRef=collection(db,'clubs','main','audit');
   window.firebaseSignIn=(email,password)=>signInWithEmailAndPassword(auth,email,password);
   window.firebaseSignOut=()=>signOut(auth);
-  async function syncCollection(ref,items){const existing=await getDocs(ref), next=new Set(items.map(x=>String(x.id))), batch=writeBatch(db);existing.docs.forEach(d=>{if(!next.has(d.id))batch.delete(d.ref)});items.forEach((x,i)=>batch.set(doc(ref,String(x.id)),{...x,sortOrder:x.sortOrder??i,updatedAt:serverTimestamp()}));return batch.commit();}
-  window.firebaseSave=async state=>{await Promise.all([syncCollection(paths.tables,state.rooms),syncCollection(paths.bookings,state.bookings),syncCollection(paths.menuCats,state.menuCats.map((name,i)=>({id:name,name,sortOrder:i}))),syncCollection(paths.menuItems,state.menuItems),syncCollection(paths.history,state.history),setDoc(settingsRef,{workHours:state.workHours,shiftRevenue:state.shiftRevenue,shiftSessions:state.shiftSessions,updatedAt:serverTimestamp()},{merge:true})]);};
-  window.firebaseAudit=(entry)=>addDoc(auditRef,{...entry,createdAt:serverTimestamp()});
-  function emit(){if(Object.values(cache).some(v=>v===null))return;const c={...cache};window.applyCloudState&&window.applyCloudState({rooms:c.tables.sort((a,b)=>(a.sortOrder??0)-(b.sortOrder??0)),bookings:c.bookings,menuCats:c.menuCats.sort((a,b)=>(a.sortOrder??0)-(b.sortOrder??0)).map(x=>x.name),menuItems:c.menuItems,history:c.history,workHours:c.settings.workHours,shiftRevenue:c.settings.shiftRevenue||0,shiftSessions:c.settings.shiftSessions||0});}
-  function startCloud(user){unsubs.forEach(f=>f());unsubs=[];Object.entries(paths).forEach(([k,ref])=>unsubs.push(onSnapshot(ref,s=>{cache[k]=s.docs.map(d=>({id:isNaN(Number(d.id))?d.id:Number(d.id),...d.data()}));emit();if(k==='tables'&&s.empty&&!seeded&&user.role==='boss'&&window.bootstrapCloud){seeded=true;window.bootstrapCloud();}})));unsubs.push(onSnapshot(settingsRef,s=>{cache.settings=s.exists()?s.data():{};emit();}));unsubs.push(onSnapshot(query(auditRef,orderBy('createdAt','desc'),limit(200)),s=>window.applyAuditLog&&window.applyAuditLog(s.docs.map(d=>({id:d.id,...d.data(),time:d.data().createdAt?.toDate?.().toISOString()||d.data().time}))));}
-  onAuthStateChanged(auth,async user=>{
-    if(!user){window.onFirebaseUser&&window.onFirebaseUser(null);return;}
-    try{const profile=await getDoc(doc(db,'users',user.uid)); if(!profile.exists()||!['boss','admin'].includes(profile.data().role))throw new Error('Для учётной записи не назначена роль'); const account={uid:user.uid,email:user.email,...profile.data()};startCloud(account);window.onFirebaseUser&&window.onFirebaseUser(account);}
-    catch(e){await signOut(auth);window.onFirebaseUser&&window.onFirebaseUser(null,e.message);}
-  });
+  window.firebaseSave=state=>setDoc(stateRef,{...state,updatedAt:serverTimestamp()},{merge:true});
+  window.firebaseAudit=entry=>addDoc(auditRef,{...entry,createdAt:serverTimestamp()});
+  let hasState=false;
+  onSnapshot(stateRef,s=>{hasState=s.exists();if(hasState&&window.applyCloudState)window.applyCloudState(s.data())});
+  onSnapshot(query(auditRef,orderBy('createdAt','desc'),limit(200)),s=>window.applyAuditLog&&window.applyAuditLog(s.docs.map(d=>({id:d.id,...d.data(),time:d.data().createdAt?.toDate?.().toISOString()||d.data().time}))));
+  onAuthStateChanged(auth,async user=>{if(!user){window.onFirebaseUser&&window.onFirebaseUser(null);return;}try{const profile=await getDoc(doc(db,'users',user.uid));if(!profile.exists()||!['boss','admin'].includes(profile.data().role))throw new Error('Для учётной записи не назначена роль');const account={uid:user.uid,email:user.email,...profile.data()};window.onFirebaseUser&&window.onFirebaseUser(account);setTimeout(()=>{if(!hasState&&account.role==='boss'&&window.bootstrapCloud)window.bootstrapCloud()},300);}catch(e){await signOut(auth);window.onFirebaseUser&&window.onFirebaseUser(null,e.message);}});
 </script>
 <script>
 // ══════════════ DATA ══════════════

@@ -27,6 +27,9 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t);min-he
 .login-title{font-size:18px;font-weight:700;margin-bottom:4px;}
 .login-sub{font-size:12px;color:var(--t3);margin-bottom:24px;}
 .login-err{font-size:11px;color:var(--red);margin-top:8px;min-height:16px;}
+.login-help{font-size:10px;color:var(--t3);margin-top:14px;line-height:1.45;text-align:left;}
+.role-chip{font-size:9px;font-weight:700;padding:3px 7px;border:1px solid var(--b2);border-radius:999px;color:var(--acc);margin-left:auto;}
+.nav-item[hidden],.role-only[hidden]{display:none!important;}
 
 /* ─ SIDEBAR ─ */
 .sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--b);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:20;}
@@ -183,6 +186,14 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 .tc.reserved{background:var(--amb-bg);border-color:var(--amb);}
 .tc.past{background:var(--bg);border-color:var(--b);cursor:default;opacity:.4;}
 .tc.off{background:rgba(255,255,255,.02);border-color:var(--b);cursor:not-allowed;opacity:.3;}
+.tc.work{box-shadow:inset 0 0 0 999px rgba(79,142,247,.035);}
+.view-switch{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.date-nav{display:flex;gap:5px;align-items:center;margin-left:auto;}
+.calendar-day{display:grid;grid-template-columns:88px repeat(auto-fit,minmax(140px,1fr));gap:7px;min-width:680px;}
+.cal-hour{font:10px 'JetBrains Mono',monospace;color:var(--t3);padding-top:10px;}
+.cal-slot{min-height:52px;padding:7px;border-radius:var(--r);border:1px solid var(--b);background:var(--bg3);font-size:10px;}
+.cal-slot.busy{border-color:var(--acc);background:var(--acc-bg);}.cal-slot.reserved{border-color:var(--amb);background:var(--amb-bg);}.cal-slot.closed{border-color:var(--grn);background:var(--grn-bg);}
+.force-flag{display:inline-flex;align-items:center;gap:3px;color:var(--red);font-size:9px;font-weight:700;margin-top:3px;}
 .sched-table{width:100%;border-collapse:collapse;font-size:11px;}
 .sched-table th{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px;text-align:left;border-bottom:1px solid var(--b);font-weight:700;}
 .sched-table td{padding:9px 8px;border-bottom:1px solid var(--b);vertical-align:middle;}
@@ -254,12 +265,13 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div class="login-logo"><i class="ti ti-circle-dot" style="color:#fff;font-size:22px;"></i></div>
     <div class="login-title">Billiard Pro</div>
     <div class="login-sub">Система учёта · Батуми</div>
+    <div class="fg"><label>Логин / email</label><input type="email" id="login-email" placeholder="admin@club.ge"></div>
     <div class="fg"><label>Пароль</label>
       <input type="password" id="login-pw" placeholder="Введите пароль" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-primary btn-full" onclick="doLogin()">Войти</button>
     <div class="login-err" id="login-err"></div>
-    <div style="font-size:10px;color:var(--t3);margin-top:16px;">Пароль по умолчанию: <b style="color:var(--t2);">1234</b></div>
+    <div class="login-help">Вход защищён Firebase Authentication. Учётные записи создаются владельцем клуба; пароли не хранятся в этом файле.</div>
   </div>
 </div>
 
@@ -278,15 +290,16 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div class="nav-sec">Управление</div>
     <button class="nav-item active" onclick="goPage('tables',this)"><i class="ti ti-layout-grid"></i><span>Столы и залы</span></button>
     <button class="nav-item" onclick="goPage('schedule',this)"><i class="ti ti-calendar"></i><span>Расписание</span><span class="nbadge" id="res-badge" style="display:none">0</span></button>
-    <button class="nav-item" onclick="goPage('dashboard',this)"><i class="ti ti-chart-bar"></i><span>Аналитика</span></button>
+    <button class="nav-item role-only" data-role="boss" onclick="goPage('dashboard',this)"><i class="ti ti-chart-bar"></i><span>Аналитика</span></button>
     <div class="nav-sec">Настройки</div>
-    <button class="nav-item" onclick="goPage('menu-set',this)"><i class="ti ti-menu-2"></i><span>Меню</span></button>
-    <button class="nav-item" onclick="goPage('rooms-set',this)"><i class="ti ti-settings"></i><span>Столы / Залы</span></button>
+    <button class="nav-item role-only" data-role="boss" onclick="goPage('menu-set',this)"><i class="ti ti-menu-2"></i><span>Меню</span></button>
+    <button class="nav-item role-only" data-role="boss" onclick="goPage('rooms-set',this)"><i class="ti ti-settings"></i><span>Столы / Залы</span></button>
+    <button class="nav-item role-only" data-role="boss" onclick="goPage('audit',this)"><i class="ti ti-shield-check"></i><span>История действий</span></button>
     <div class="nav-sec">Отчёты</div>
     <button class="nav-item" onclick="goPage('history',this)"><i class="ti ti-history"></i><span>История смены</span></button>
   </nav>
   <div class="sidebar-foot">
-    <div class="clk" id="clock">00:00:00</div>
+    <div style="display:flex;align-items:center;"><div class="clk" id="clock">00:00:00</div><span class="role-chip" id="user-role">—</span></div>
     <div class="clk-d" id="clock-date">—</div>
     <button class="logout-btn" onclick="doLogout()"><i class="ti ti-logout" style="font-size:13px;"></i><span>Выйти</span></button>
   </div>
@@ -318,11 +331,16 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <!-- SCHEDULE PAGE -->
     <div class="page" id="page-schedule">
       <div class="panel">
-        <div class="ptitle"><i class="ti ti-calendar"></i>Расписание на сегодня</div>
+        <div class="ptitle"><i class="ti ti-calendar"></i><span id="schedule-title">Расписание</span></div>
+        <div class="view-switch">
+          <button class="btn btn-sm btn-primary" id="view-grid" onclick="setScheduleView('grid')"><i class="ti ti-layout-grid"></i> Сетка</button>
+          <button class="btn btn-sm" id="view-calendar" onclick="setScheduleView('calendar')"><i class="ti ti-calendar-event"></i> Календарь</button>
+          <div class="date-nav"><button class="btn btn-sm" onclick="moveScheduleDate(-1)">Вчера</button><button class="btn btn-sm" onclick="setScheduleDate(todayISO())">Сегодня</button><button class="btn btn-sm" onclick="moveScheduleDate(1)">Завтра</button><input id="schedule-date" type="date" onchange="setScheduleDate(this.value)" style="background:var(--bg3);border:1px solid var(--b2);border-radius:var(--r);color:var(--t);padding:5px 7px;font:11px Manrope"></div>
+        </div>
         <div class="tip"><i class="ti ti-info-circle" style="flex-shrink:0;"></i>
           Рабочее время: <b id="wh-display">15:00 — 02:00</b>. Серые ячейки — вне рабочего времени. Кликните на свободный слот для быстрой брони.
         </div>
-        <div class="tl-wrap"><div class="tl" id="timeline"></div></div>
+        <div class="tl-wrap"><div class="tl" id="timeline"></div><div id="day-calendar" style="display:none"></div></div>
         <div class="ptitle" style="margin-top:14px;"><i class="ti ti-list"></i>Все брони</div>
         <div id="bookings-list"></div>
       </div>
@@ -413,6 +431,10 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
       </div>
     </div>
 
+    <div class="page" id="page-audit">
+      <div class="panel"><div class="ptitle"><i class="ti ti-shield-check"></i>История действий</div><div class="tip"><i class="ti ti-info-circle"></i>Фиксируются принудительные брони, изменения и удаления с указанием пользователя.</div><div id="audit-container"></div></div>
+    </div>
+
   </div>
 </div>
 </div><!-- /app -->
@@ -488,13 +510,17 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
       <div class="fg"><label>До</label><input id="bk-to" type="time" value="17:00"></div>
     </div>
     <div class="fg"><label>Заметка</label><input id="bk-note" placeholder="Необязательно"></div>
+    <div class="fg" id="bk-force-comment-wrap" style="display:none"><label>Комментарий администратора <span style="color:var(--red)">*</span></label><textarea id="bk-force-comment" rows="2" placeholder="Почему требуется бронирование занятого стола?"></textarea></div>
     <div id="bk-err" style="font-size:11px;color:var(--red);min-height:14px;margin-bottom:4px;"></div>
     <div class="mactions">
       <button class="btn" onclick="closeOv('ov-booking')">Отмена</button>
-      <button class="btn btn-amber" onclick="saveBooking()"><i class="ti ti-calendar-check"></i> Забронировать</button>
+      <button class="btn btn-amber" onclick="saveBooking()"><i class="ti ti-calendar-check"></i> <span id="bk-submit-text">Забронировать</span></button>
     </div>
   </div>
 </div>
+
+<!-- MODAL: ACTIVE TABLE WARNING -->
+<div class="overlay" id="ov-active-warning"><div class="modal" style="width:410px;"><div class="confirm-body"><div class="confirm-icon" style="background:var(--amb-bg)"><i class="ti ti-alert-triangle" style="color:var(--amb);font-size:24px"></i></div><div style="font-size:14px;font-weight:700;margin-bottom:7px">Стол сейчас занят текущей игрой</div><div id="active-warning-text" style="font-size:12px;color:var(--t2);line-height:1.5"></div></div><div class="mactions" style="justify-content:center"><button class="btn" onclick="closeOv('ov-active-warning')">Отмена</button><button class="btn btn-amber" onclick="continueForcedBooking()">Продолжить бронирование</button></div></div></div>
 
 <!-- MODAL: END SHIFT CONFIRM -->
 <div class="overlay" id="ov-shift">
@@ -512,11 +538,30 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
   </div>
 </div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+  import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  const firebaseConfig={apiKey:"AIzaSyAwIBjo8H-FL0IzPJoKO4R6OR4ZfbDdw04",authDomain:"billiard-club-batumi.firebaseapp.com",projectId:"billiard-club-batumi",storageBucket:"billiard-club-batumi.firebasestorage.app",messagingSenderId:"1063963977625",appId:"1:1063963977625:web:7b6e71813eede837f79508",measurementId:"G-Y45Y7L684V"};
+  const app=initializeApp(firebaseConfig); try{getAnalytics(app)}catch(e){}
+  const auth=getAuth(app), db=getFirestore(app), stateRef=doc(db,'clubs','main');
+  window.firebaseSignIn=(email,password)=>signInWithEmailAndPassword(auth,email,password);
+  window.firebaseSignOut=()=>signOut(auth);
+  window.firebaseSave=state=>setDoc(stateRef,state,{merge:true});
+  window.firebaseAudit=(entry)=>addDoc(collection(db,'clubs','main','audit'),{...entry,createdAt:serverTimestamp()});
+  onSnapshot(stateRef,s=>{if(s.exists()&&window.applyCloudState)window.applyCloudState(s.data())});
+  onSnapshot(query(collection(db,'clubs','main','audit'),orderBy('createdAt','desc'),limit(200)),s=>{window.applyAuditLog&&window.applyAuditLog(s.docs.map(d=>({id:d.id,...d.data(),time:d.data().createdAt?.toDate?.().toISOString()||d.data().time})));});
+  onAuthStateChanged(auth,async user=>{
+    if(!user){window.onFirebaseUser&&window.onFirebaseUser(null);return;}
+    try{const profile=await getDoc(doc(db,'users',user.uid)); if(!profile.exists()||!['boss','admin'].includes(profile.data().role))throw new Error('Для учётной записи не назначена роль'); window.onFirebaseUser&&window.onFirebaseUser({uid:user.uid,email:user.email,...profile.data()});}
+    catch(e){await signOut(auth);window.onFirebaseUser&&window.onFirebaseUser(null,e.message);}
+  });
+</script>
 <script>
 // ══════════════ DATA ══════════════
 const ROOM_TYPES={billiard:'Бильярдный стол',snooker:'Снукерный стол',pool:'Пул стол',karaoke:'Зал Karaoke'};
 const ROOM_ICONS={billiard:'ti-circle-dot',snooker:'ti-oval',pool:'ti-circle',karaoke:'ti-microphone'};
-const DEFAULT_PW='1234';
 let workHours={open:15,close:2}; // close = hour next day if < open
 
 let rooms=[
@@ -557,21 +602,22 @@ let shiftRevenue=0, shiftSessions=0;
 let hourlyData=new Array(24).fill(0);
 let activeRoomId=null, sessionRoomId=null;
 let menuShowAll=false,menuSearch='',menuActiveCat=null,settingsCat=null;
-let dragSrc=null;
+let dragSrc=null, currentUser=null, auditLog=[], scheduleDate=todayISO(), scheduleView='grid', bookingEditId=null, forcedBooking=false, pendingForcedRoomId=null;
 
 // ══════════════ UTILS ══════════════
 const pad=n=>String(n).padStart(2,'0');
 function durStr(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;return`${pad(h)}:${pad(m)}:${pad(sc)}`;}
 function fmt(n){return(+n).toFixed(2).replace('.',',')+' ₾';}
 function calcCost(s){if(!s)return 0;return(Date.now()-s.startTime)/3600000*s.rate+s.extras.reduce((a,e)=>a+e.price*e.qty,0);}
-function todayISO(){return new Date().toISOString().slice(0,10);}
+function todayISO(){return localDateISO();}
+function localDateISO(d=new Date()){const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10);}
+function businessDateISO(d=new Date()){const x=new Date(d);if(x.getHours()<5)x.setDate(x.getDate()-1);return localDateISO(x);}
 function starred10(){return menuItems.filter(m=>m.starred).slice(0,10);}
 
 // ══════════════ PERSIST ══════════════
 function save(){
   try{
-    // Save rooms WITH active sessions (including startTime) so they survive refresh
-    localStorage.setItem('bp_rooms',JSON.stringify(rooms));
+    localStorage.setItem('bp_rooms',JSON.stringify(rooms.map(r=>({...r,session:null}))));
     localStorage.setItem('bp_history',JSON.stringify(history));
     localStorage.setItem('bp_menuItems',JSON.stringify(menuItems));
     localStorage.setItem('bp_menuCats',JSON.stringify(menuCats));
@@ -579,9 +625,17 @@ function save(){
     localStorage.setItem('bp_shiftRev',shiftRevenue);
     localStorage.setItem('bp_shiftSess',shiftSessions);
     localStorage.setItem('bp_workHours',JSON.stringify(workHours));
-    localStorage.setItem('bp_hourly',JSON.stringify(hourlyData));
+    const cloud={rooms,history,menuItems,menuCats,bookings,shiftRevenue,shiftSessions,workHours,updatedAt:Date.now()};
+    if(window.firebaseSave&&currentUser)window.firebaseSave(cloud).catch(console.warn);
   }catch(e){}
 }
+function applyCloudState(data){
+  if(data.rooms)rooms=data.rooms;if(data.history)history=data.history;if(data.menuItems)menuItems=data.menuItems;if(data.menuCats)menuCats=data.menuCats;if(data.bookings)bookings=data.bookings;if(data.shiftRevenue!==undefined)shiftRevenue=data.shiftRevenue;if(data.shiftSessions!==undefined)shiftSessions=data.shiftSessions;if(data.workHours)workHours=data.workHours;
+  renderRooms();updateStats();if(document.getElementById('page-schedule').classList.contains('active'))renderSchedule();
+}
+function audit(action,meta={}){const entry={time:new Date().toISOString(),user:currentUser?.email||'—',action,...meta};auditLog.unshift(entry);if(window.firebaseAudit&&currentUser)window.firebaseAudit(entry).catch(console.warn);}
+window.applyCloudState=applyCloudState;
+window.applyAuditLog=entries=>{auditLog=entries;if(document.getElementById('page-audit').classList.contains('active'))renderAudit();};
 function load(){
   try{
     const r=localStorage.getItem('bp_rooms');if(r)rooms=JSON.parse(r);
@@ -592,45 +646,28 @@ function load(){
     const sr=localStorage.getItem('bp_shiftRev');if(sr)shiftRevenue=parseFloat(sr)||0;
     const ss=localStorage.getItem('bp_shiftSess');if(ss)shiftSessions=parseInt(ss)||0;
     const wh=localStorage.getItem('bp_workHours');if(wh)workHours=JSON.parse(wh);
-    const hd=localStorage.getItem('bp_hourly');if(hd)hourlyData=JSON.parse(hd);
   }catch(e){}
 }
 
 // ══════════════ LOGIN ══════════════
-function doLogin(){
-  const pw=document.getElementById('login-pw').value;
-  if(pw===DEFAULT_PW){
-    // Store auth in localStorage so it survives page refresh (not just tab)
-    localStorage.setItem('bp_auth','1');
-    showApp();
-  } else {
-    document.getElementById('login-err').textContent='Неверный пароль';
-    document.getElementById('login-pw').value='';
-  }
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim(),pw=document.getElementById('login-pw').value;
+  const err=document.getElementById('login-err');err.textContent='';
+  if(!email||!pw){err.textContent='Введите email и пароль';return;}
+  try{await window.firebaseSignIn(email,pw)}catch(e){err.textContent='Не удалось войти: проверьте учётные данные';}
 }
-function showApp(){
-  load();
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='flex';
-  renderRooms(); updateStats();
-}
+window.onFirebaseUser=function(user,error){
+  if(!user){document.getElementById('app').style.display='none';document.getElementById('login-screen').style.display='flex';if(error)document.getElementById('login-err').textContent=error;return;}
+  currentUser=user;load();document.getElementById('login-screen').style.display='none';document.getElementById('app').style.display='flex';document.getElementById('user-role').textContent=user.role==='boss'?'Босс':'Администратор';
+  document.querySelectorAll('.role-only').forEach(el=>el.hidden=user.role!=='boss');renderRooms();updateStats();
+};
 function doLogout(){
   save();
-  localStorage.removeItem('bp_auth');
-  document.getElementById('app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
+  currentUser=null;if(window.firebaseSignOut)window.firebaseSignOut();
   document.getElementById('login-pw').value='';
   document.getElementById('login-err').textContent='';
 }
 document.getElementById('login-pw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-
-// ══════════════ AUTO-LOGIN ON REFRESH ══════════════
-// If auth token exists in localStorage, skip login screen immediately
-if(localStorage.getItem('bp_auth')==='1'){
-  showApp();
-} else {
-  // Show login screen (already visible by default)
-}
 
 // ══════════════ CLOCK & TICK ══════════════
 function updateClock(){
@@ -720,15 +757,7 @@ function openSess(id){
   document.getElementById('ov-sess').classList.add('open');
 }
 
-function sessBodyHasFocus(){
-  // Don't rebuild innerHTML if user is actively typing in an input inside the modal
-  const active=document.activeElement;
-  if(!active)return false;
-  const modal=document.getElementById('ov-sess');
-  return modal&&modal.contains(active)&&(active.tagName==='INPUT'||active.tagName==='TEXTAREA');
-}
-
-function refreshSessBody(force){
+function refreshSessBody(){
   const r=rooms.find(x=>x.id===sessionRoomId);
   if(!r||!r.session)return;
   const s=r.session;
@@ -736,23 +765,15 @@ function refreshSessBody(force){
   const tCost=(ms/3600000)*s.rate;
   const eCost=s.extras.reduce((a,e)=>a+e.price*e.qty,0);
 
-  // If user is typing in the modal, only update the live numbers — never rebuild DOM
-  if(!force && sessBodyHasFocus()){
-    const te=document.getElementById('sess-time-display');if(te)te.textContent=durStr(ms);
-    const tce=document.getElementById('sess-table-cost');if(tce)tce.textContent=fmt(tCost);
-    const tot=document.getElementById('sess-total-display');if(tot)tot.textContent=fmt(tCost+eCost);
-    const stl=document.getElementById('sess-stol-line');if(stl)stl.textContent=`Стол (${durStr(ms)} × ${s.rate} ₾/ч)`;
-    return;
-  }
-
   // Build menu items to display
+  const starred=starred10();
   let dispItems;
   if(menuSearch.trim()){
     dispItems=menuItems.filter(m=>m.name.toLowerCase().includes(menuSearch.toLowerCase()));
   } else if(menuShowAll){
     dispItems=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat):menuItems;
   } else {
-    dispItems=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat).slice(0,10):starred10();
+    dispItems=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat).slice(0,10):starred;
   }
   const total=menuActiveCat?menuItems.filter(m=>m.cat===menuActiveCat).length:menuItems.length;
   const canExpand=!menuSearch&&!menuShowAll&&dispItems.length>=10&&total>10;
@@ -774,56 +795,56 @@ function refreshSessBody(force){
   document.getElementById('sess-body').innerHTML=`
     <div style="display:flex;gap:18px;margin-bottom:13px;">
       <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Время</div>
-        <div id="sess-time-display" style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--acc);">${durStr(ms)}</div></div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--acc);">${durStr(ms)}</div></div>
       <div><div style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Тариф</div>
         <div style="font-size:13px;font-weight:600;color:var(--t2);">${s.rate} ₾/час</div></div>
     </div>
     <div class="slbl">Меню</div>
-    <input class="search-box" id="sess-search" placeholder="🔍 Поиск по меню..." value="${menuSearch}" oninput="ss(this.value)">
+    <input class="search-box" placeholder="🔍 Поиск по меню..." value="${menuSearch}" oninput="ss(this.value)">
     <div class="cats-bar">${allTab}${catTabs}</div>
     <div class="menu-grid">${mgrid}</div>
     ${expandBtn}
     <div class="slbl">Своя позиция</div>
     <div class="manual-row">
-      <input id="sess-mn" placeholder="Наименование" style="flex:2;">
-      <input id="sess-mp" type="number" placeholder="₾" style="width:65px;">
-      <input id="sess-mq" type="number" value="1" min="1" style="width:50px;">
+      <input id="mn" placeholder="Наименование" style="flex:2;">
+      <input id="mp" type="number" placeholder="₾" style="width:65px;">
+      <input id="mq" type="number" value="1" min="1" style="width:50px;">
       <button class="btn btn-sm" onclick="addMan()"><i class="ti ti-plus"></i></button>
     </div>
     <div class="slbl" style="margin-top:11px;">В счёте</div>
     <div class="el">${extH}</div>
     <div class="rbox">
-      <div class="rr"><span id="sess-stol-line">Стол (${durStr(ms)} × ${s.rate} ₾/ч)</span><span id="sess-table-cost">${fmt(tCost)}</span></div>
+      <div class="rr"><span>Стол (${durStr(ms)} × ${s.rate} ₾/ч)</span><span>${fmt(tCost)}</span></div>
       <div class="rr"><span>Меню и услуги</span><span>${fmt(eCost)}</span></div>
       <hr class="rdiv">
-      <div class="rtot"><span>Итого</span><span id="sess-total-display">${fmt(tCost+eCost)}</span></div>
+      <div class="rtot"><span>Итого</span><span>${fmt(tCost+eCost)}</span></div>
     </div>`;
 }
 
-function sc(c){menuActiveCat=c;menuShowAll=false;menuSearch='';refreshSessBody(true);}
-function ss(v){menuSearch=v;if(v)menuShowAll=true;refreshSessBody(true);}
-function toggleAll(){menuShowAll=true;refreshSessBody(true);}
+function sc(c){menuActiveCat=c;menuShowAll=false;menuSearch='';refreshSessBody();}
+function ss(v){menuSearch=v;if(v)menuShowAll=true;refreshSessBody();}
+function toggleAll(){menuShowAll=true;refreshSessBody();}
 function addFM(id){
   const it=menuItems.find(m=>m.id===id);if(!it)return;
   it.orders++;
   const r=rooms.find(x=>x.id===sessionRoomId);
   const ex=r.session.extras.find(e=>e.name===it.name);
   if(ex)ex.qty++;else r.session.extras.push({name:it.name,price:it.price,qty:1});
-  refreshSessBody(true);renderRooms();save();
+  refreshSessBody();renderRooms();save();
 }
 function addMan(){
-  const nm=document.getElementById('sess-mn').value.trim();
-  const pr=parseFloat(document.getElementById('sess-mp').value);
-  const qt=parseInt(document.getElementById('sess-mq').value)||1;
-  if(!nm){ document.getElementById('sess-mn').focus(); return; }
-  if(!pr){ document.getElementById('sess-mp').focus(); return; }
+  const nm=document.getElementById('mn').value.trim();
+  const pr=parseFloat(document.getElementById('mp').value);
+  const qt=parseInt(document.getElementById('mq').value)||1;
+  if(!nm||!pr)return;
   const r=rooms.find(x=>x.id===sessionRoomId);
   const ex=r.session.extras.find(e=>e.name===nm);
   if(ex)ex.qty+=qt;else r.session.extras.push({name:nm,price:pr,qty:qt});
-  refreshSessBody(true);renderRooms();save();
+  document.getElementById('mn').value='';document.getElementById('mp').value='';document.getElementById('mq').value='1';
+  refreshSessBody();renderRooms();save();
 }
-function cq(i,d){const r=rooms.find(x=>x.id===sessionRoomId);r.session.extras[i].qty=Math.max(1,r.session.extras[i].qty+d);refreshSessBody(true);renderRooms();}
-function re(i){rooms.find(x=>x.id===sessionRoomId).session.extras.splice(i,1);refreshSessBody(true);renderRooms();}
+function cq(i,d){const r=rooms.find(x=>x.id===sessionRoomId);r.session.extras[i].qty=Math.max(1,r.session.extras[i].qty+d);refreshSessBody();renderRooms();}
+function re(i){rooms.find(x=>x.id===sessionRoomId).session.extras.splice(i,1);refreshSessBody();renderRooms();}
 
 // ══════════════ CONFIRM → FINAL CLOSE ══════════════
 function confirmClose(){
@@ -849,7 +870,8 @@ function doFinalClose(){
   const total=tCost+eCost;
   const now=new Date();
 
-  history.unshift({room:r.name,client:s.client||'Клиент',duration:durStr(ms),total,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours()});
+  history.unshift({room:r.name,client:s.client||'Клиент',duration:durStr(ms),total,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours(),businessDate:businessDateISO(now)});
+  audit(`Закрыта сессия: ${r.name}`,{businessDate:businessDateISO(now)});
   shiftRevenue+=total; shiftSessions++;
   hourlyData[now.getHours()]=Math.max(hourlyData[now.getHours()],1);
   r.session=null; sessionRoomId=null;
@@ -874,38 +896,46 @@ function isWorkHour(h){
   if(open<close)return h>=open&&h<close;
   return h>=open||h<close; // overnight
 }
-function openBooking(roomId){
+function openBooking(roomId,bypassWarning=false){
+  const target=rooms.find(r=>r.id===roomId);
+  if(target?.session&&!bypassWarning){pendingForcedRoomId=roomId;document.getElementById('active-warning-text').textContent=`${target.name} занят. Начало сессии: ${new Date(target.session.startTime).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}. Бронь будет помечена как принудительная.`;document.getElementById('ov-active-warning').classList.add('open');return;}
+  forcedBooking=!!target?.session;bookingEditId=null;
   const sel=document.getElementById('bk-room');
   sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');
   if(roomId)sel.value=roomId;
-  document.getElementById('bk-date').value=todayISO();
+  document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-calendar-plus" style="color:var(--amb);"></i>Новая бронь';
+  document.getElementById('bk-date').value=scheduleDate||todayISO();
   document.getElementById('bk-client').value='';document.getElementById('bk-phone').value='';
-  document.getElementById('bk-note').value='';document.getElementById('bk-err').textContent='';
+  document.getElementById('bk-note').value='';document.getElementById('bk-force-comment').value='';document.getElementById('bk-err').textContent='';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent=forcedBooking?'Создать принудительную бронь':'Забронировать';
   document.getElementById('ov-booking').classList.add('open');
 }
+function continueForcedBooking(){closeOv('ov-active-warning');openBooking(pendingForcedRoomId,true);}
+function editBooking(id){const b=bookings.find(x=>x.id===id);if(!b)return;bookingEditId=id;forcedBooking=!!b.forced;const sel=document.getElementById('bk-room');sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');sel.value=b.roomId;document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-edit" style="color:var(--amb);"></i>Редактировать бронь';['client','phone','date','from','to','note'].forEach(k=>document.getElementById('bk-'+k).value=b[k]||'');document.getElementById('bk-force-comment').value=b.forceComment||'';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent='Сохранить';document.getElementById('ov-booking').classList.add('open');}
 function saveBooking(){
   const date=document.getElementById('bk-date').value;
   const from=document.getElementById('bk-from').value;
   const to=document.getElementById('bk-to').value;
   const errEl=document.getElementById('bk-err');
-  // Validate: not in past
+  // New bookings cannot be placed in the past; existing records remain editable.
   const now=new Date();
   const slotDT=new Date(`${date}T${from}:00`);
-  if(slotDT<now){errEl.textContent='Нельзя создать бронь в прошлом';return;}
+  if(!bookingEditId&&slotDT<now){errEl.textContent='Нельзя создать бронь в прошлом';return;}
   if(!from||!to){errEl.textContent='Укажите время';return;}
   if(from>=to&&!(+to.split(':')[0]<+from.split(':')[0])){errEl.textContent='Время окончания должно быть позже начала';return;}
   // Validate: within work hours
   const fh=+from.split(':')[0];
   if(!isWorkHour(fh)){errEl.textContent=`Слот вне рабочего времени (${pad(workHours.open)}:00 — ${pad(workHours.close)}:00)`;return;}
-  const b={id:Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim()};
-  bookings.push(b);bookings.sort((a,b)=>a.from.localeCompare(b.from));
+  const forceComment=document.getElementById('bk-force-comment').value.trim();
+  if(forcedBooking&&!forceComment){errEl.textContent='Добавьте комментарий администратора для принудительного бронирования';return;}
+  const b={id:bookingEditId||Date.now(),roomId:+document.getElementById('bk-room').value,client:document.getElementById('bk-client').value.trim()||'Клиент',phone:document.getElementById('bk-phone').value.trim(),date,from,to,note:document.getElementById('bk-note').value.trim(),forced:forcedBooking,forceComment};
+  if(bookingEditId){bookings=bookings.map(x=>x.id===bookingEditId?b:x);audit(`Изменена бронь №${bookingEditId}`);}else{bookings.push(b);audit(forcedBooking?`Создана принудительная бронь №${b.id}`:`Создана бронь №${b.id}`,{comment:forceComment});}bookings.sort((a,b)=>a.from.localeCompare(b.from));
   closeOv('ov-booking');renderRooms();renderSchedule();updateStats();save();
 }
-function delBooking(id){bookings=bookings.filter(b=>b.id!==id);renderSchedule();renderRooms();updateStats();save();}
+function delBooking(id){if(!confirm(`Удалить бронь №${id}?`))return;bookings=bookings.filter(b=>b.id!==id);audit(`Удалена бронь №${id}`);renderSchedule();renderRooms();updateStats();save();}
 
 // ══════════════ SCHEDULE ══════════════
 function renderSchedule(){
-  const today=todayISO();
+  const today=scheduleDate||todayISO();
   const nowH=new Date().getHours();
   const nowM=new Date().getMinutes();
   const ALL_H=Array.from({length:24},(_,i)=>i);
@@ -918,19 +948,18 @@ function renderSchedule(){
         const off=!isWorkHour(h);
         const past=h<nowH||(h===nowH&&nowM>30);
         const sess=r.session&&new Date(r.session.startTime).getHours()===h;
-        const res=bookings.find(b=>b.roomId===r.id&&b.date===today&&+b.from.split(':')[0]<=h&&h<+b.to.split(':')[0]);
+        const res=bookings.find(b=>{const f=+b.from.split(':')[0],t=+b.to.split(':')[0];return b.roomId===r.id&&b.date===today&&(f<t?(f<=h&&h<t):(h>=f||h<t));});
         if(off)return`<div class="tc off" title="Вне рабочего времени"></div>`;
         if(sess)return`<div class="tc busy" title="Занят сейчас"></div>`;
-        if(res)return`<div class="tc reserved" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick=""></div>`;
+        if(res)return`<div class="tc reserved" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})"></div>`;
         if(past)return`<div class="tc past" title="Прошедшее время"></div>`;
-        return`<div class="tc free" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
+        return`<div class="tc free work" title="${pad(h)}:00 — свободно" onclick="quickBook(${r.id},${h})"></div>`;
       }).join('');
       return`<div class="tl-row"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
     }).join('');
 
-  const tod=bookings.filter(b=>b.date===today);
-  const fut=bookings.filter(b=>b.date>today);
-  const all=[...tod,...fut];
+  document.getElementById('schedule-date').value=today;document.getElementById('schedule-title').textContent=`Расписание · ${new Date(today+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}`;
+  const all=bookings.slice().sort((a,b)=>(a.date+a.from).localeCompare(b.date+b.from));
   document.getElementById('bookings-list').innerHTML=all.length
     ?`<table class="sched-table"><thead><tr><th>Зал</th><th>Клиент</th><th>Телефон</th><th>Дата</th><th>Время</th><th>Заметка</th><th></th></tr></thead><tbody>
     ${all.map(b=>{const rm=rooms.find(r=>r.id===b.roomId);return`<tr>
@@ -938,11 +967,16 @@ function renderSchedule(){
       <td>${b.client}</td><td style="color:var(--t2);font-size:10px;">${b.phone||'—'}</td>
       <td style="font-size:10px;color:var(--t2);">${b.date===today?'Сегодня':b.date}</td>
       <td><span class="res-pill"><i class="ti ti-clock" style="font-size:9px;"></i>${b.from}–${b.to}</span></td>
-      <td style="font-size:10px;color:var(--t3);">${b.note||'—'}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="delBooking(${b.id})"><i class="ti ti-trash"></i></button></td>
+      <td style="font-size:10px;color:var(--t3);">${b.note||'—'}${b.forced?`<div class="force-flag"><i class="ti ti-alert-triangle"></i>Принудительная${b.forceComment?`: ${b.forceComment}`:''}</div>`:''}</td>
+      <td style="display:flex;gap:4px"><button class="btn btn-sm" onclick="editBooking(${b.id})"><i class="ti ti-edit"></i></button><button class="btn btn-danger btn-sm" onclick="delBooking(${b.id})"><i class="ti ti-trash"></i></button></td>
     </tr>`;}).join('')}</tbody></table>`
     :`<div style="text-align:center;padding:24px 0;color:var(--t3);font-size:12px;">Нет броней</div>`;
+  renderDayCalendar(today);
 }
+function setScheduleView(view){scheduleView=view;document.getElementById('timeline').style.display=view==='grid'?'':'none';document.getElementById('day-calendar').style.display=view==='calendar'?'':'none';document.getElementById('view-grid').classList.toggle('btn-primary',view==='grid');document.getElementById('view-calendar').classList.toggle('btn-primary',view==='calendar');renderSchedule();}
+function setScheduleDate(date){scheduleDate=date||todayISO();renderSchedule();}
+function moveScheduleDate(delta){const d=new Date((scheduleDate||todayISO())+'T12:00');d.setDate(d.getDate()+delta);setScheduleDate(localDateISO(d));}
+function renderDayCalendar(date){const hours=Array.from({length:24},(_,i)=>i);const sessions=history.filter(h=>h.businessDate===date);document.getElementById('day-calendar').innerHTML=`<div class="calendar-day"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${hours.map(h=>`<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const booking=bookings.find(b=>b.roomId===r.id&&b.date===date&&+b.from.split(':')[0]===h);const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=active?{txt:'Открытая сессия',cls:'busy'}:booking?{txt:`${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved'}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed'}:null;return`<div class="cal-slot${x?' '+x.cls:''}">${x?x.txt:'—'}</div>`}).join('')}`).join('')}</div>`;}
 function quickBook(roomId,hour){
   openBooking(roomId);
   document.getElementById('bk-from').value=`${pad(hour)}:00`;
@@ -994,6 +1028,11 @@ function renderHistory(){
       <td style="color:var(--t3);font-size:10px;">${h.time}</td>
     </tr>`).join('')}</tbody></table>`;
 }
+function renderAudit(){
+  const el=document.getElementById('audit-container');
+  if(!auditLog.length){el.innerHTML='<div style="padding:24px 0;text-align:center;color:var(--t3);font-size:12px">История появится после первого действия.</div>';return;}
+  el.innerHTML=`<table class="ht"><thead><tr><th>Дата / время</th><th>Пользователь</th><th>Действие</th></tr></thead><tbody>${auditLog.map(a=>`<tr><td class="hd">${new Date(a.time).toLocaleString('ru-RU')}</td><td>${a.user}</td><td>${a.action}${a.comment?`<div style="font-size:10px;color:var(--t3);margin-top:3px">${a.comment}</div>`:''}</td></tr>`).join('')}</tbody></table>`;
+}
 
 // ══════════════ MENU SETTINGS + DnD ══════════════
 let dragItemId=null;
@@ -1031,18 +1070,13 @@ function addCat(){
   menuCats.push(v);document.getElementById('new-cat-in').value='';renderMenuSettings();save();
 }
 function addMenuItem(){
-  const catEl=document.getElementById('ai-cat');
-  const nameEl=document.getElementById('ai-name');
-  const priceEl=document.getElementById('ai-price');
-  const cat=catEl.value;
-  const name=nameEl.value.trim();
-  const price=parseFloat(priceEl.value);
-  if(!name){ nameEl.focus(); nameEl.style.borderColor='var(--red)'; return; }
-  if(!price){ priceEl.focus(); priceEl.style.borderColor='var(--red)'; return; }
-  nameEl.style.borderColor=''; priceEl.style.borderColor='';
+  const cat=document.getElementById('ai-cat').value;
+  const name=document.getElementById('ai-name').value.trim();
+  const price=parseFloat(document.getElementById('ai-price').value);
+  if(!name||!price)return;
   menuItems.push({id:Date.now(),cat,name,price,orders:0,starred:false});
-  nameEl.value=''; priceEl.value='';
-  settingsCat=cat; renderMenuSettings(); save();
+  document.getElementById('ai-name').value='';document.getElementById('ai-price').value='';
+  settingsCat=cat;renderMenuSettings();save();
 }
 function delMI(id){menuItems=menuItems.filter(m=>m.id!==id);renderMenuSettings();save();}
 // DnD for menu reorder
@@ -1099,17 +1133,19 @@ function doEndShift(){
 
 // ══════════════ NAV & OVERLAYS ══════════════
 function goPage(name,btn){
+  if(['dashboard','menu-set','rooms-set','audit'].includes(name)&&currentUser?.role!=='boss'){alert('Этот раздел доступен только роли «Босс».');return;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
-  const titles={'tables':'Столы и залы','schedule':'Расписание','dashboard':'Аналитика','menu-set':'Настройки меню','rooms-set':'Настройки столов','history':'История смены'};
+  const titles={'tables':'Столы и залы','schedule':'Расписание','dashboard':'Аналитика','menu-set':'Настройки меню','rooms-set':'Настройки столов','history':'История смены','audit':'История действий'};
   document.getElementById('page-title').textContent=titles[name]||name;
   if(name==='schedule')renderSchedule();
   if(name==='dashboard')renderDashboard();
   if(name==='menu-set')renderMenuSettings();
   if(name==='rooms-set')renderRoomsSettings();
   if(name==='history')renderHistory();
+  if(name==='audit')renderAudit();
 }
 function closeOv(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeOv(o.id);}));

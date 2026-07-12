@@ -193,13 +193,23 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 .tc.work{box-shadow:inset 0 0 0 999px rgba(79,142,247,.035);}
 .view-switch{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
 .date-nav{display:flex;gap:5px;align-items:center;margin-left:auto;}
-.calendar-day{display:grid;grid-template-columns:88px repeat(var(--room-cols),minmax(170px,1fr));gap:7px;min-width:calc(88px + var(--room-cols) * 170px);}
-.cal-hour{font:10px 'JetBrains Mono',monospace;color:var(--t3);padding-top:10px;}
-.cal-day-divider{grid-column:1/-1;background:rgba(79,142,247,.12);border-top:1px dashed var(--acc);border-bottom:1px dashed var(--acc);color:#8fb8ff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;margin:4px 0;}
+.calendar-timeline{--calendar-px:1.15px;min-width:calc(88px + var(--room-cols) * 170px);}
+.cal-head,.cal-body{display:grid;grid-template-columns:88px repeat(var(--room-cols),minmax(170px,1fr));gap:7px;}
+.cal-head{margin-bottom:7px;position:sticky;top:0;z-index:4;background:var(--bg2);padding-bottom:6px;}
+.cal-hour{font:10px 'JetBrains Mono',monospace;color:var(--t3);padding:6px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cal-body{position:relative;align-items:start;}
+.cal-time-axis,.cal-column{position:relative;}
+.cal-time-axis{border-right:1px solid var(--b);}
+.cal-time-label{position:absolute;left:0;transform:translateY(-8px);font:10px 'JetBrains Mono',monospace;color:var(--t3);}
+.cal-time-label.close{transform:translateY(-14px);}
+.cal-column{cursor:crosshair;border:1px solid var(--b);border-radius:var(--r);overflow:hidden;background-color:var(--bg3);background-image:linear-gradient(to bottom,transparent calc(100% - 1px),rgba(255,255,255,.07) calc(100% - 1px)),linear-gradient(to bottom,transparent calc(100% - 1px),rgba(255,255,255,.035) calc(100% - 1px));background-size:100% 69px,100% 17.25px;}
+.cal-column:hover{border-color:var(--acc);}
+.cal-midnight{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--acc);z-index:1;pointer-events:none;}
+.cal-midnight span{position:absolute;left:6px;top:4px;background:var(--bg2);padding:1px 4px;color:#8fb8ff;font-size:9px;font-weight:700;white-space:nowrap;}
+.cal-event{position:absolute;left:4px;right:4px;z-index:2;min-height:24px;padding:6px 7px;border:1px solid var(--amb);border-radius:7px;background:var(--amb-bg);color:var(--t1);font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;}
+.cal-event:hover{filter:brightness(1.16);}.cal-event.forced{border-style:dashed;}.cal-event.active{border-color:var(--acc);background:var(--acc-bg);}
 .tl-hc.next-day,.tc.next-day{box-shadow:inset 2px 0 0 var(--acc);}
 .tl-hc.next-day{color:#8fb8ff;font-weight:700;}
-.cal-slot{min-height:52px;padding:7px;border-radius:var(--r);border:1px solid var(--b);background:var(--bg3);font-size:10px;}
-.cal-slot.busy{border-color:var(--acc);background:var(--acc-bg);}.cal-slot.reserved{border-color:var(--amb);background:var(--amb-bg);}.cal-slot.closed{border-color:var(--grn);background:var(--grn-bg);}
 .force-flag{display:inline-flex;align-items:center;gap:3px;color:var(--red);font-size:9px;font-weight:700;margin-top:3px;}
 .sched-table{width:100%;border-collapse:collapse;font-size:11px;}
 .sched-table th{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;padding:0 8px 8px;text-align:left;border-bottom:1px solid var(--b);font-weight:700;}
@@ -1020,17 +1030,41 @@ function businessShiftHours(){const out=[];for(let h=workHours.open;h!==workHour
 function setScheduleView(view){scheduleView=view;document.getElementById('timeline').style.display=view==='grid'?'':'none';document.getElementById('day-calendar').style.display=view==='calendar'?'':'none';document.getElementById('view-grid').classList.toggle('btn-primary',view==='grid');document.getElementById('view-calendar').classList.toggle('btn-primary',view==='calendar');renderSchedule();}
 function setScheduleDate(date){scheduleDate=date||todayISO();renderSchedule();}
 function moveScheduleDate(delta){const d=new Date((scheduleDate||todayISO())+'T12:00');d.setDate(d.getDate()+delta);setScheduleDate(localDateISO(d));}
-function renderDayCalendar(date){const hours=businessShiftHours(),sessions=history.filter(h=>h.businessDate===date);const cells=hours.map(h=>`${h===0?'<div class="cal-day-divider">00:00 — следующий календарный день · та же смена</div>':''}<div class="cal-hour">${pad(h)}:00</div>${rooms.map(r=>{const slotStart=(h<workHours.open?h+24:h)*60,booking=bookings.find(b=>{if(b.roomId!==r.id||b.date!==date)return false;let f=+b.from.slice(0,2)*60 + +b.from.slice(3),t=+b.to.slice(0,2)*60 + +b.to.slice(3);if(f<workHours.open)f+=1440;if(t<=f||t<workHours.open)t+=1440;return slotStart<t&&slotStart+60>f});const active=r.session&&date===todayISO()&&new Date(r.session.startTime).getHours()===h;const closed=sessions.find(s=>s.room===r.name&&s.closeHour===h);const x=booking?{txt:`${booking.client} · ${booking.from}–${booking.to}${booking.forced?' · принудительная':''}`,cls:'reserved',click:`onclick="editBooking(${booking.id})"`}:active?{txt:'Открытая сессия · клик для брони',cls:'busy',click:`onclick="openBooking(${r.id})"`}:closed?{txt:`Закрыто · ${closed.total?fmt(closed.total):''}`,cls:'closed',click:''}:null;return`<div class="cal-slot${x?' '+x.cls:''}" ${x?.click||`onclick="quickBook(${r.id},${h},0)"`}>${x?x.txt:'Свободно'}</div>`}).join('')}`).join('');document.getElementById('day-calendar').innerHTML=`<div class="calendar-day" style="--room-cols:${rooms.length}"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}${cells}</div>`;}
-function quickBook(roomId,hour,minute=0){
+function businessShiftMinutes(){return ((workHours.close-workHours.open+24)%24)*60;}
+function shiftRelative(hour,minute=0){const absolute=hour*60+minute;return (hour<workHours.open?absolute+1440:absolute)-workHours.open*60;}
+function shiftClock(relative){const absolute=(workHours.open*60+relative)%1440;return `${pad(Math.floor(absolute/60))}:${pad(absolute%60)}`;}
+function bookingRelativeRange(b){const [fh,fm]=b.from.split(':').map(Number),[th,tm]=b.to.split(':').map(Number);const start=shiftRelative(fh,fm);let end=shiftRelative(th,tm);if(end<=start)end+=1440;return{start,end};}
+function renderDayCalendar(date){
+  const duration=businessShiftMinutes(), midnight=shiftRelative(0,0), hourMarks=[];
+  for(let rel=0;rel<=duration;rel+=60)hourMarks.push({rel,hour:(workHours.open+Math.floor(rel/60))%24,close:rel===duration});
+  const labels=hourMarks.map(x=>`<span class="cal-time-label${x.close?' close':''}" style="top:${x.rel*1.15}px">${pad(x.hour)}:00</span>`).join('');
+  const columns=rooms.map(r=>{
+    const events=bookings.filter(b=>b.roomId===r.id&&b.date===date&&b.status!=='closed').map(b=>{
+      const range=bookingRelativeRange(b),top=Math.max(0,range.start),end=Math.min(duration,range.end);
+      if(end<=0||top>=duration)return'';
+      return`<div class="cal-event${b.forced?' forced':''}" style="top:${top*1.15}px;height:${Math.max(24,(end-top)*1.15)}px" title="Бронь: ${b.client} ${b.from}–${b.to}" onclick="event.stopPropagation();editBooking(${b.id})"><b>${b.client}</b><br>${b.from}–${b.to}${b.forced?'<br>Принудительная':''}</div>`;
+    }).join('');
+    const active=r.session&&date===todayISO()?`<div class="cal-event active" style="top:${Math.max(0,shiftRelative(new Date(r.session.startTime).getHours(),new Date(r.session.startTime).getMinutes()))*1.15}px;height:${Math.max(30,(duration-shiftRelative(new Date(r.session.startTime).getHours(),new Date(r.session.startTime).getMinutes()))*1.15)}px" onclick="event.stopPropagation();openBooking(${r.id})"><b>Активная игра</b><br>с ${new Date(r.session.startTime).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`:'';
+    return`<div class="cal-column" style="height:${duration*1.15}px" data-room="${r.id}" onclick="calendarColumnClick(event,${r.id})">${midnight>0&&midnight<duration?`<div class="cal-midnight" style="top:${midnight*1.15}px"><span>00:00 · следующий день</span></div>`:''}${events}${active}</div>`;
+  }).join('');
+  document.getElementById('day-calendar').innerHTML=`<div class="calendar-timeline" style="--room-cols:${rooms.length}"><div class="cal-head"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}</div><div class="cal-body"><div class="cal-time-axis" style="height:${duration*1.15}px">${labels}</div>${columns}</div></div>`;
+}
+function calendarColumnClick(event,roomId){
+  const rect=event.currentTarget.getBoundingClientRect(),pxPerMinute=1.15;
+  const raw=Math.floor((event.clientY-rect.top)/pxPerMinute/15)*15;
+  quickBookAtRelative(roomId,Math.max(0,Math.min(businessShiftMinutes()-15,raw)));
+}
+function quickBook(roomId,hour,minute=0){quickBookAtRelative(roomId,shiftRelative(hour,minute));}
+function quickBookAtRelative(roomId,relative){
+  const selectedDate=scheduleDate||todayISO(),now=new Date(),isToday=selectedDate===todayISO();
+  let start=Math.max(0,Math.min(businessShiftMinutes()-15,relative));
+  if(isToday){const nowRel=shiftRelative(now.getHours(),now.getMinutes());if(nowRel>=0&&nowRel<businessShiftMinutes())start=Math.max(start,Math.ceil((nowRel+1)/15)*15);}
+  const next=bookings.filter(b=>b.roomId===roomId&&b.date===selectedDate&&b.status!=='closed').map(bookingRelativeRange).map(x=>x.start).filter(x=>x>start).sort((a,b)=>a-b)[0];
+  const end=next!==undefined?next:Math.min(businessShiftMinutes(),start+60);
+  if(end<=start){alert('В этом интервале нет свободного времени для брони.');return;}
   openBooking(roomId);
-  const now=new Date(),isToday=(scheduleDate||todayISO())===todayISO();
-  let minutes=hour*60+minute;
-  if(isToday&&minutes<=now.getHours()*60+now.getMinutes())minutes=Math.ceil((now.getMinutes()+1)/15)*15+now.getHours()*60;
-  const selectedDate=scheduleDate||todayISO(),startRel=(Math.floor(minutes/60)<workHours.open?Math.floor(minutes/60)+24:Math.floor(minutes/60))*60+minutes%60;
-  const next=bookings.filter(b=>b.roomId===roomId&&b.date===selectedDate).map(b=>{const f=+b.from.slice(0,2)*60 + +b.from.slice(3);return f<workHours.open?f+1440:f}).filter(f=>f>startRel).sort((a,b)=>a-b)[0];
-  const to=next!==undefined?next:minutes+60;
-  document.getElementById('bk-from').value=`${pad(Math.floor(minutes/60)%24)}:${pad(minutes%60)}`;
-  document.getElementById('bk-to').value=`${pad(Math.floor(to/60)%24)}:${pad(to%60)}`;
+  document.getElementById('bk-from').value=shiftClock(start);
+  document.getElementById('bk-to').value=shiftClock(end);
 }
 
 // ══════════════ DASHBOARD ══════════════

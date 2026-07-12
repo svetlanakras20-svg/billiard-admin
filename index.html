@@ -452,7 +452,8 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
       <div class="fg"><label>Клиент</label><input id="s-client" placeholder="Имя (необязательно)"></div>
       <div class="fg"><label>Тариф ₾/час</label><input id="s-rate" type="number" value="15"></div>
     </div>
-    <div class="fg"><label>Телефон</label><input id="s-phone" placeholder="+995..."></div>
+    <div class="fg"><label>Телефон</label><input id="s-phone" inputmode="numeric" placeholder="+995 5XX XXX XXX"><div id="s-phone-err" style="font-size:10px;color:var(--red)"></div></div>
+    <div class="fg"><label>Комментарий к визиту</label><textarea id="s-comment" rows="2" placeholder="Только для этой сессии"></textarea></div>
     <div class="mactions">
       <button class="btn" onclick="closeOv('ov-start')">Отмена</button>
       <button class="btn btn-primary" onclick="doStart()"><i class="ti ti-player-play"></i> Открыть</button>
@@ -507,7 +508,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div class="fg"><label>Зал / Стол</label><select id="bk-room" onchange="checkBookingTable(this.value)"></select></div>
     <div class="fg2">
       <div class="fg"><label>Клиент</label><input id="bk-client" placeholder="Имя"></div>
-      <div class="fg"><label>Телефон</label><input id="bk-phone" placeholder="+995..."></div>
+      <div class="fg"><label>Телефон</label><input id="bk-phone" inputmode="numeric" placeholder="+995 5XX XXX XXX"></div>
     </div>
     <div class="fg3">
       <div class="fg"><label>Дата</label><input id="bk-date" type="date"></div>
@@ -741,12 +742,16 @@ function openStart(id){
   document.getElementById('start-t').textContent=`Открыть — ${r.name}`;
   document.getElementById('s-client').value='';
   document.getElementById('s-phone').value='';
+  document.getElementById('s-comment').value='';document.getElementById('s-phone-err').textContent='';
   document.getElementById('s-rate').value=r.rate;
   document.getElementById('ov-start').classList.add('open');
 }
 function doStart(){
   const r=rooms.find(x=>x.id===activeRoomId);
-  r.session={startTime:Date.now(),client:document.getElementById('s-client').value.trim(),phone:document.getElementById('s-phone').value.trim(),rate:parseFloat(document.getElementById('s-rate').value)||15,extras:[]};
+  const phone=normPhone(document.getElementById('s-phone').value),name=document.getElementById('s-client').value.trim();
+  if(phone&&!/^5\d{8}$/.test(phone)){document.getElementById('s-phone-err').textContent='Введите грузинский мобильный номер: +995 5XX XXX XXX';return;}
+  let client=phone&&clients.find(c=>c.phone===phone);if(phone&&!client){client={id:Date.now(),name:name||'Клиент',phone,status:'Новый',notes:'',visits:0};clients.push(client);}
+  r.session={startTime:Date.now(),client:client?.name||name,clientId:client?.id||null,phone:phone?'+995'+phone:'',clientStatus:client?.status||'Новый',comment:document.getElementById('s-comment').value.trim(),rate:parseFloat(document.getElementById('s-rate').value)||15,extras:[]};
   closeOv('ov-start'); renderRooms(); save();
 }
 

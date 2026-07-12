@@ -183,6 +183,10 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 .tc.free{background:var(--bg3);border-color:var(--b);}
 .tc.free:hover{background:var(--bg4);border-color:var(--acc);}
 .tc.busy{background:var(--acc-bg);border-color:var(--acc);}
+.tc.busy.cont-mid,.tc.closed.cont-mid{border-left-color:transparent;border-right-color:transparent;border-radius:0;}
+.tc.busy.cont-start,.tc.closed.cont-start{border-radius:5px 0 0 5px;border-right-color:transparent;}
+.tc.busy.cont-end,.tc.closed.cont-end{border-radius:0 5px 5px 0;border-left-color:transparent;}
+.tc.closed{background:var(--grn-bg);border-color:var(--grn);}
 .tc.reserved{background:var(--amb-bg);border-color:var(--amb);}
 .tc.reserved.cont-mid{border-left-color:transparent;border-right-color:transparent;border-radius:0;}
 .tc.reserved.cont-start{border-radius:5px 0 0 5px;border-right-color:transparent;}
@@ -207,7 +211,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 .cal-midnight{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--acc);z-index:1;pointer-events:none;}
 .cal-midnight span{position:absolute;left:6px;top:4px;background:var(--bg2);padding:1px 4px;color:#8fb8ff;font-size:9px;font-weight:700;white-space:nowrap;}
 .cal-event{position:absolute;left:4px;right:4px;z-index:2;min-height:24px;padding:6px 7px;border:1px solid var(--amb);border-radius:7px;background:var(--amb-bg);color:var(--t1);font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;}
-.cal-event:hover{filter:brightness(1.16);}.cal-event.forced{border-style:dashed;}.cal-event.active{border-color:var(--acc);background:var(--acc-bg);}
+.cal-event:hover{filter:brightness(1.16);}.cal-event.forced{border-style:dashed;}.cal-event.active{border-color:var(--acc);background:var(--acc-bg);}.cal-event.closed{border-color:var(--grn);background:var(--grn-bg);}
 .tl-hc.next-day,.tc.next-day{box-shadow:inset 2px 0 0 var(--acc);}
 .tl-hc.next-day{color:#8fb8ff;font-weight:700;}
 .force-flag{display:inline-flex;align-items:center;gap:3px;color:var(--red);font-size:9px;font-weight:700;margin-top:3px;}
@@ -258,6 +262,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 
 /* ─ MISC ─ */
 .tip{background:var(--acc-bg);border:1px solid rgba(79,142,247,.25);border-radius:var(--r);padding:8px 12px;font-size:11px;color:rgba(150,190,255,.8);display:flex;align-items:flex-start;gap:7px;margin-bottom:13px;}
+.live-sessions{display:flex;gap:7px;flex-wrap:wrap;margin:-5px 0 12px;}.live-session{display:flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid var(--acc);border-radius:7px;background:var(--acc-bg);font-size:10px;color:var(--t2);cursor:pointer;}.live-session b{color:var(--t);}.live-session i{color:var(--acc);}
 .warn{background:var(--amb-bg);border:1px solid rgba(245,166,35,.25);border-radius:var(--r);padding:8px 12px;font-size:11px;color:rgba(255,200,100,.85);display:flex;align-items:flex-start;gap:7px;margin-bottom:13px;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -364,6 +369,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
         <div class="tip"><i class="ti ti-info-circle" style="flex-shrink:0;"></i>
           Рабочее время: <b id="wh-display">15:00 — 02:00</b>. Серые ячейки — вне рабочего времени. Кликните на свободный слот для быстрой брони.
         </div>
+        <div class="live-sessions" id="schedule-live"></div>
         <div class="tl-wrap"><div class="tl" id="timeline"></div><div id="day-calendar" style="display:none"></div></div>
         <div id="bookings-list" hidden></div>
       </div>
@@ -542,6 +548,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div id="bk-err" style="font-size:11px;color:var(--red);min-height:14px;margin-bottom:4px;"></div>
     <div class="mactions">
       <button class="btn" onclick="closeOv('ov-booking')">Отмена</button>
+      <button class="btn btn-success" id="bk-checkin" style="display:none" onclick="checkInBooking(bookingEditId);closeOv('ov-booking')"><i class="ti ti-player-play"></i> Посадить клиента</button>
       <button class="btn btn-amber" onclick="saveBooking()"><i class="ti ti-calendar-check"></i> <span id="bk-submit-text">Забронировать</span></button>
     </div>
   </div>
@@ -551,6 +558,8 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 <div class="overlay" id="ov-active-warning"><div class="modal" style="width:410px;"><div class="confirm-body"><div class="confirm-icon" style="background:var(--amb-bg)"><i class="ti ti-alert-triangle" style="color:var(--amb);font-size:24px"></i></div><div style="font-size:14px;font-weight:700;margin-bottom:7px">Стол сейчас занят текущей игрой</div><div id="active-warning-text" style="font-size:12px;color:var(--t2);line-height:1.5"></div></div><div class="mactions" style="justify-content:center"><button class="btn" onclick="closeOv('ov-active-warning')">Отмена</button><button class="btn btn-amber" onclick="continueForcedBooking()">Продолжить бронирование</button></div></div></div>
 
 <div class="overlay" id="ov-client"><div class="modal"><div class="mtitle"><i class="ti ti-user-edit" style="color:var(--acc)"></i>Карточка клиента</div><input id="client-edit-id" type="hidden"><div class="fg"><label>Имя</label><input id="client-edit-name"></div><div class="fg"><label>Телефон</label><input id="client-edit-phone" inputmode="numeric" placeholder="+995 5XX XXX XXX"></div><div class="fg"><label>Статус</label><select id="client-edit-status"></select></div><div class="fg"><label>Постоянная заметка</label><textarea id="client-edit-notes" rows="3"></textarea></div><div class="mactions"><button class="btn" onclick="closeOv('ov-client')">Отмена</button><button class="btn btn-primary" onclick="saveClientEdit()">Сохранить</button></div></div></div>
+
+<div class="overlay" id="ov-closed-details"><div class="modal" style="width:400px"><div class="mtitle"><i class="ti ti-receipt" style="color:var(--grn)"></i>Закрытая сессия</div><div class="rbox" id="closed-details-body"></div><div class="mactions"><button class="btn btn-primary" onclick="closeOv('ov-closed-details')">Готово</button></div></div></div>
 
 <!-- MODAL: END SHIFT CONFIRM -->
 <div class="overlay" id="ov-shift">
@@ -718,6 +727,8 @@ function tick(){
     const tt=document.getElementById('tot-'+r.id);if(tt)tt.textContent=fmt(calcCost(r.session));
   });
   updateStats();
+  // The active strip on the schedule follows actual play time without redrawing every second.
+  if(document.getElementById('page-schedule').classList.contains('active')&&Date.now()-(window.lastScheduleLiveRefresh||0)>=300000){window.lastScheduleLiveRefresh=Date.now();renderSchedule();}
   // Keep manual input intact while a session modal is open.
 }
 setInterval(tick,1000);
@@ -741,12 +752,14 @@ function renderRooms(){
   const now=Date.now();
   document.getElementById('rooms-grid').innerHTML=rooms.map(r=>{
     const busy=!!r.session;
-    const hasRes=bookings.some(b=>b.roomId===r.id&&b.date===todayISO());
+    const todays=bookings.filter(b=>b.roomId===r.id&&b.date===todayISO()&&b.status!=='closed');
+    const currentRes=todays.find(b=>{const start=new Date(`${b.date}T${b.from}:00`),end=new Date(`${b.date}T${b.to}:00`);if(end<=start)end.setDate(end.getDate()+1);return start<=new Date()&&new Date()<end;});
+    const nextRes=todays.filter(b=>new Date(`${b.date}T${b.from}:00`)>new Date()).sort((a,b)=>a.from.localeCompare(b.from))[0];
     const dur=busy?durStr(now-r.session.startTime):'00:00:00';
     const cost=busy?calcCost(r.session):0;
     const extQty=busy?r.session.extras.reduce((a,e)=>a+e.qty,0):0;
-    const cls=busy?'occupied':hasRes?'reserved':'';
-    const badge=busy?`<span class="badge b-busy">Занят</span>`:hasRes?`<span class="badge b-res">Бронь</span>`:`<span class="badge b-free">Свободен</span>`;
+    const cls=busy?'occupied':(currentRes||nextRes)?'reserved':'';
+    const badge=busy?`<span class="badge b-busy">Занят</span>`:currentRes?`<span class="badge b-res">Ожидает клиента</span>`:nextRes?`<span class="badge b-res">Бронь · ${nextRes.from}</span>`:`<span class="badge b-free">Свободен</span>`;
     return`<div class="rc ${cls}">
       <div class="rc-head"><span class="rc-name">${r.name}</span>${badge}</div>
       <div class="rc-type"><i class="ti ${ROOM_ICONS[r.type]||'ti-circle-dot'}" style="font-size:11px;"></i>${ROOM_TYPES[r.type]||''}</div>
@@ -782,7 +795,7 @@ function doStart(){
   if(phone&&!/^5\d{8}$/.test(phone)){document.getElementById('s-phone-err').textContent='Введите грузинский мобильный номер: +995 5XX XXX XXX';return;}
   let client=phone&&clients.find(c=>c.phone===phone);if(phone&&!client){client={id:Date.now(),name:name||'Клиент',phone,status:'Новый',notes:'',visits:0};clients.push(client);}
   r.session={startTime:Date.now(),client:client?.name||name,clientId:client?.id||null,phone:phone?'+995'+phone:'',clientStatus:client?.status||'Новый',comment:document.getElementById('s-comment').value.trim(),rate:parseFloat(document.getElementById('s-rate').value)||15,extras:[]};
-  closeOv('ov-start'); renderRooms(); save();
+  closeOv('ov-start'); renderRooms(); renderSchedule(); save();
 }
 
 // ══════════════ SESSION DETAIL ══════════════
@@ -914,14 +927,14 @@ function doFinalClose(){
   const paymentMethod=document.getElementById('payment-method').value,payment=paymentMethod==='split'?{cash:+document.getElementById('split-cash').value||0,card:+document.getElementById('split-card').value||0}:{[paymentMethod]:total};
   const now=new Date();
 
-  history.unshift({id:Date.now(),room:r.name,client:s.client||'Клиент',clientId:s.clientId||null,clientStatus:s.clientStatus||'Новый',duration:durStr(ms),total,paymentMethod,payment,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),closeHour:now.getHours(),businessDate:businessDateISO(now)});
+  history.unshift({id:Date.now(),room:r.name,client:s.client||'Клиент',clientId:s.clientId||null,clientStatus:s.clientStatus||'Новый',duration:durStr(ms),total,paymentMethod,payment,extras:[...s.extras],rate:s.rate,tCost,eCost,time:now.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}),startTime:s.startTime,closeAt:Date.now(),closeHour:now.getHours(),businessDate:businessDateISO(now)});
   if(s.clientId){const c=clients.find(x=>x.id===s.clientId);if(c){c.visits=(c.visits||0)+1;c.lastVisit=now.toISOString();c.totalSpent=(c.totalSpent||0)+total;}}
   audit(`Закрыта сессия: ${r.name}`,{businessDate:businessDateISO(now)});
   shiftRevenue+=total; shiftSessions++;
   hourlyData[now.getHours()]=Math.max(hourlyData[now.getHours()],1);
   if(s.bookingId){const booking=bookings.find(b=>b.id===s.bookingId);if(booking)booking.status='closed';}
   r.session=null; sessionRoomId=null;
-  closeOv('ov-confirm'); renderRooms(); save();
+  closeOv('ov-confirm'); renderRooms(); renderSchedule(); save();
 
   // Final receipt
   const h=history[0];
@@ -953,11 +966,12 @@ function openBooking(roomId,bypassWarning=false){
   document.getElementById('bk-date').value=scheduleDate||todayISO();
   document.getElementById('bk-client').value='';document.getElementById('bk-phone').value='';
   document.getElementById('bk-note').value='';document.getElementById('bk-force-comment').value='';document.getElementById('bk-err').textContent='';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent=forcedBooking?'Создать принудительную бронь':'Забронировать';
+  document.getElementById('bk-checkin').style.display='none';
   document.getElementById('ov-booking').classList.add('open');
 }
 function continueForcedBooking(){closeOv('ov-active-warning');openBooking(pendingForcedRoomId,true);if(pendingBookingDraft){Object.entries(pendingBookingDraft).forEach(([k,v])=>{const e=document.getElementById('bk-'+k);if(e)e.value=v});pendingBookingDraft=null;}}
 function checkBookingTable(roomId){}
-function editBooking(id){const b=bookings.find(x=>x.id===id);if(!b)return;bookingEditId=id;forcedBooking=!!b.forced;const sel=document.getElementById('bk-room');sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');sel.value=b.roomId;document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-edit" style="color:var(--amb);"></i>Редактировать бронь';['client','phone','date','from','to','note'].forEach(k=>document.getElementById('bk-'+k).value=b[k]||'');document.getElementById('bk-force-comment').value=b.forceComment||'';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent='Сохранить';document.getElementById('ov-booking').classList.add('open');}
+function editBooking(id){const b=bookings.find(x=>x.id===id);if(!b)return;bookingEditId=id;forcedBooking=!!b.forced;const sel=document.getElementById('bk-room');sel.innerHTML=rooms.map(r=>`<option value="${r.id}">${r.name}</option>`).join('');sel.value=b.roomId;document.querySelector('#ov-booking .mtitle').innerHTML='<i class="ti ti-edit" style="color:var(--amb);"></i>Редактировать бронь';['client','phone','date','from','to','note'].forEach(k=>document.getElementById('bk-'+k).value=b[k]||'');document.getElementById('bk-force-comment').value=b.forceComment||'';document.getElementById('bk-force-comment-wrap').style.display=forcedBooking?'':'none';document.getElementById('bk-submit-text').textContent='Сохранить';const room=rooms.find(r=>r.id===b.roomId);document.getElementById('bk-checkin').style.display=bookingState(b)==='Ожидает заезда'&&!room?.session?'':'none';document.getElementById('ov-booking').classList.add('open');}
 function saveBooking(){
   const date=document.getElementById('bk-date').value;
   const from=document.getElementById('bk-from').value;
@@ -990,7 +1004,7 @@ function saveBooking(){
 }
 function delBooking(id){if(!confirm(`Удалить бронь №${id}?`))return;bookings=bookings.filter(b=>b.id!==id);audit(`Удалена бронь №${id}`);renderSchedule();renderRooms();updateStats();save();}
 function bookingState(b){if(b.status==='active')return'Активная игра';const start=new Date(`${b.date}T${b.from}:00`);return start<=new Date()?'Ожидает заезда':'Будущая';}
-function checkInBooking(id){const b=bookings.find(x=>x.id===id),r=rooms.find(x=>x.id===b?.roomId);if(!b||!r)return;if(r.session){alert('Этот стол уже занят активной игрой. Используйте принудительную бронь или закройте текущую сессию.');return;}r.session={startTime:Date.now(),client:b.client,phone:b.phone,rate:r.rate,extras:[],bookingId:b.id};b.status='active';audit(`Клиент посажен по брони №${b.id}`);renderRooms();renderSchedule();save();}
+function checkInBooking(id){const b=bookings.find(x=>x.id===id),r=rooms.find(x=>x.id===b?.roomId);if(!b||!r)return;if(r.session){alert('Этот стол уже занят активной игрой. Используйте принудительную бронь или закройте текущую сессию.');return;}const client=clients.find(c=>c.id===b.clientId)||clients.find(c=>c.phone===normPhone(b.phone));r.session={startTime:Date.now(),client:b.client,clientId:client?.id||b.clientId||null,clientStatus:client?.status||'Новый',phone:b.phone,comment:b.note||'',rate:r.rate,extras:[],bookingId:b.id};b.status='active';audit(`Клиент посажен по брони №${b.id}`);renderRooms();renderSchedule();save();}
 
 // ══════════════ SCHEDULE ══════════════
 function renderSchedule(){
@@ -999,17 +1013,21 @@ function renderSchedule(){
   const nowM=new Date().getMinutes();
   // One business shift starts at opening and continues after midnight until closing.
   const ALL_H=businessShiftHours();
+  const live=document.getElementById('schedule-live');
+  if(live)live.innerHTML=rooms.filter(r=>r.session).map(r=>{const s=r.session,d=new Date(s.startTime);return`<div class="live-session" onclick="openSess(${r.id})"><i class="ti ti-player-play"></i><b>${r.name}</b><span>открыт с ${pad(d.getHours())}:${pad(d.getMinutes())} · ${durStr(Date.now()-s.startTime)}</span></div>`;}).join('');
 
   const hdrCells=ALL_H.map(h=>`<div class="tl-hc${h===0?' next-day':''}" style="grid-column:span 4">${h===0?'00<br><small>след. день</small>':pad(h)}</div>`).join('');
   document.getElementById('timeline').innerHTML=
     `<div class="tl-hdr" style="grid-template-columns:130px repeat(${ALL_H.length*4},1fr)"><div class="tl-hc" style="text-align:left;padding-left:4px;">Зал</div>${hdrCells}</div>`+
     rooms.map(r=>{
+      const activeRange=activeSessionRange(r,today);
       const cells=ALL_H.flatMap(h=>[0,15,30,45].map(m=>{
-        const rel=(h<workHours.open?h+24:h)*60+m,nowRel=(nowH<workHours.open?nowH+24:nowH)*60+nowM;
+        const rel=(h<workHours.open?h+24:h)*60+m,slotRel=rel-workHours.open*60,nowRel=(nowH<workHours.open?nowH+24:nowH)*60+nowM;
         const res=bookings.find(b=>{if(b.roomId!==r.id||b.date!==today)return false;const f=+b.from.slice(0,2)*60 + +b.from.slice(3),t=+b.to.slice(0,2)*60 + +b.to.slice(3),start=f<workHours.open?f+1440:f,end=(t<=f||t<workHours.open)?t+1440:t;return rel>=start&&rel<end;});
-        const sess=r.session&&today===todayISO()&&new Date(r.session.startTime).getHours()===h;
+        const closed=closedSessionAt(r,today,slotRel);
+        if(activeRange&&slotRel>=activeRange.start&&slotRel<activeRange.end){const cls=slotRel===activeRange.start?' cont-start':slotRel+15>=activeRange.end?' cont-end':' cont-mid';return`<div class="tc busy${cls}" title="Открытая игра с ${activeRange.from}" onclick="openSess(${r.id})">${slotRel===activeRange.start?`<span class="slot-label">Открытая игра · с ${activeRange.from}</span>`:''}</div>`}
+        if(closed){const cls=slotRel===closed.start?' cont-start':slotRel+15>=closed.end?' cont-end':' cont-mid';return`<div class="tc closed${cls}" title="Закрытая сессия: ${closed.client}" onclick="openClosedDetails(${closed.id})">${slotRel===closed.start?`<span class="slot-label">Закрыто · ${fmt(closed.total)}</span>`:''}</div>`}
         if(res){const f=+res.from.slice(0,2)*60 + +res.from.slice(3),t=+res.to.slice(0,2)*60 + +res.to.slice(3),start=f<workHours.open?f+1440:f,end=(t<=f||t<workHours.open)?t+1440:t,cls=rel===start?' cont-start':rel+15>=end?' cont-end':' cont-mid';return`<div class="tc reserved${cls}" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})">${rel===start?`<span class="slot-label">${res.client} ${res.from}–${res.to}</span>`:''}</div>`}
-        if(sess)return`<div class="tc busy" title="Занят сейчас" onclick="openBooking(${r.id})"></div>`;
         if(today===todayISO()&&rel<nowRel)return`<div class="tc past"></div>`;
         return`<div class="tc free work" data-room-id="${r.id}" data-slot-rel="${rel-workHours.open*60}" title="${pad(h)}:${pad(m)} — свободно"></div>`;
       })).join('');
@@ -1017,7 +1035,7 @@ function renderSchedule(){
     }).join('');
 
   // One delegated handler is more reliable than inline handlers on dozens of 15-minute cells.
-  document.getElementById('timeline').onclick=e=>{
+  const handleGridSlot=e=>{
     const row=e.target.closest('.tl-row');
     if(!row||e.target.closest('.tl-rname'))return;
     // Existing cards always keep their own edit/open action.
@@ -1031,6 +1049,8 @@ function renderSchedule(){
     const rel=Math.floor(Math.max(0,Math.min(businessShiftMinutes()-1,(e.clientX-nameBox.right)/width*businessShiftMinutes()))/15)*15;
     quickBookAtRelative(+row.dataset.roomId,rel);
   };
+  // Pointer events fire consistently for mouse, touchscreens and mobile taps.
+  document.getElementById('timeline').onpointerup=handleGridSlot;
 
   document.getElementById('schedule-date').value=today;document.getElementById('schedule-title').textContent=`Расписание · ${new Date(today+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}`;
   const all=bookings.slice().sort((a,b)=>(a.date+a.from).localeCompare(b.date+b.from));
@@ -1055,18 +1075,40 @@ function businessShiftMinutes(){return ((workHours.close-workHours.open+24)%24)*
 function shiftRelative(hour,minute=0){const absolute=hour*60+minute;return (hour<workHours.open?absolute+1440:absolute)-workHours.open*60;}
 function shiftClock(relative){const absolute=(workHours.open*60+relative)%1440;return `${pad(Math.floor(absolute/60))}:${pad(absolute%60)}`;}
 function bookingRelativeRange(b){const [fh,fm]=b.from.split(':').map(Number),[th,tm]=b.to.split(':').map(Number);const start=shiftRelative(fh,fm);let end=shiftRelative(th,tm);if(end<=start)end+=1440;return{start,end};}
+function activeSessionRange(room,date){
+  if(!room.session)return null;
+  const startDate=new Date(room.session.startTime),now=new Date();
+  if(businessDateISO(startDate)!==date)return null;
+  const start=Math.max(0,shiftRelative(startDate.getHours(),startDate.getMinutes()));
+  let end=businessDateISO(now)===date?shiftRelative(now.getHours(),now.getMinutes()):businessShiftMinutes();
+  end=Math.max(start+1,Math.min(businessShiftMinutes(),end));
+  if(start>=businessShiftMinutes())return null;
+  return{start,end,from:`${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`};
+}
+function closedSessionRange(record,date){
+  if(record.businessDate!==date||!record.startTime||!record.closeAt)return null;
+  const startDate=new Date(record.startTime),endDate=new Date(record.closeAt);
+  let start=shiftRelative(startDate.getHours(),startDate.getMinutes()),end=shiftRelative(endDate.getHours(),endDate.getMinutes());
+  if(end<=start)end+=1440;
+  start=Math.max(0,start);end=Math.min(businessShiftMinutes(),end);
+  return end>start?{...record,start,end}:null;
+}
+function closedSessionAt(room,date,slotRel){return history.map(h=>closedSessionRange(h,date)).find(h=>h&&h.room===room.name&&slotRel>=h.start&&slotRel<h.end);}
+function openClosedDetails(id){const h=history.find(x=>x.id===id);if(!h)return;const method={cash:'Наличные',card:'Карта',split:'Смешанная'}[h.paymentMethod]||'—';document.getElementById('closed-details-body').innerHTML=`<div class="rr"><span>Стол</span><b>${h.room}</b></div><div class="rr"><span>Клиент</span><span>${h.client||'—'} · ${h.clientStatus||'Новый'}</span></div><div class="rr"><span>Время игры</span><span>${h.duration}</span></div><div class="rr"><span>Оплата</span><span>${method}</span></div><hr class="rdiv"><div class="rtot"><span>Итого</span><span>${fmt(h.total)}</span></div>`;document.getElementById('ov-closed-details').classList.add('open');}
 function renderDayCalendar(date){
   const duration=businessShiftMinutes(), midnight=shiftRelative(0,0), hourMarks=[];
   for(let rel=0;rel<=duration;rel+=60)hourMarks.push({rel,hour:(workHours.open+Math.floor(rel/60))%24,close:rel===duration});
   const labels=hourMarks.map(x=>`<span class="cal-time-label${x.close?' close':''}" style="top:${x.rel*1.15}px">${pad(x.hour)}:00</span>`).join('');
   const columns=rooms.map(r=>{
+    const closedEvents=history.map(h=>closedSessionRange(h,date)).filter(h=>h&&h.room===r.name).map(h=>`<div class="cal-event closed" style="top:${h.start*1.15}px;height:${Math.max(24,(h.end-h.start)*1.15)}px" title="Закрытая сессия: ${h.client}" onclick="event.stopPropagation();openClosedDetails(${h.id})"><b>Закрыто · ${fmt(h.total)}</b><br>${h.client||'Клиент'} · ${h.duration}</div>`).join('');
     const events=bookings.filter(b=>b.roomId===r.id&&b.date===date&&b.status!=='closed').map(b=>{
       const range=bookingRelativeRange(b),top=Math.max(0,range.start),end=Math.min(duration,range.end);
       if(end<=0||top>=duration)return'';
       return`<div class="cal-event${b.forced?' forced':''}" style="top:${top*1.15}px;height:${Math.max(24,(end-top)*1.15)}px" title="Бронь: ${b.client} ${b.from}–${b.to}" onclick="event.stopPropagation();editBooking(${b.id})"><b>${b.client}</b><br>${b.from}–${b.to}${b.forced?'<br>Принудительная':''}</div>`;
     }).join('');
-    const active=r.session&&date===todayISO()?`<div class="cal-event active" style="top:${Math.max(0,shiftRelative(new Date(r.session.startTime).getHours(),new Date(r.session.startTime).getMinutes()))*1.15}px;height:${Math.max(30,(duration-shiftRelative(new Date(r.session.startTime).getHours(),new Date(r.session.startTime).getMinutes()))*1.15)}px" onclick="event.stopPropagation();openBooking(${r.id})"><b>Активная игра</b><br>с ${new Date(r.session.startTime).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`:'';
-    return`<div class="cal-column" style="height:${duration*1.15}px" data-room="${r.id}" onclick="calendarColumnClick(event,${r.id})">${midnight>0&&midnight<duration?`<div class="cal-midnight" style="top:${midnight*1.15}px"><span>00:00 · следующий день</span></div>`:''}${events}${active}</div>`;
+    const ar=activeSessionRange(r,date);
+    const active=ar?`<div class="cal-event active" style="top:${ar.start*1.15}px;height:${Math.max(30,(ar.end-ar.start)*1.15)}px" onclick="event.stopPropagation();openSess(${r.id})"><b>Активная игра</b><br>с ${ar.from} · сейчас</div>`:'';
+    return`<div class="cal-column" style="height:${duration*1.15}px" data-room="${r.id}" onclick="calendarColumnClick(event,${r.id})">${midnight>0&&midnight<duration?`<div class="cal-midnight" style="top:${midnight*1.15}px"><span>00:00 · следующий день</span></div>`:''}${closedEvents}${events}${active}</div>`;
   }).join('');
   document.getElementById('day-calendar').innerHTML=`<div class="calendar-timeline" style="--room-cols:${rooms.length}"><div class="cal-head"><div class="cal-hour">Время</div>${rooms.map(r=>`<div class="cal-hour">${r.name}</div>`).join('')}</div><div class="cal-body"><div class="cal-time-axis" style="height:${duration*1.15}px">${labels}</div>${columns}</div></div>`;
 }

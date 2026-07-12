@@ -324,7 +324,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div class="page active" id="page-tables">
       <div class="stats-row">
         <div class="stat"><div class="stat-l">Активных залов</div><div class="stat-v" id="s-active">0</div><div class="stat-s">прямо сейчас</div></div>
-        <div class="stat"><div class="stat-l">Выручка смены</div><div class="stat-v" id="s-rev">0 ₾</div><div class="stat-s">только закрытые</div></div>
+        <div class="stat"><div class="stat-l">Выручка смены</div><div class="stat-v" id="s-rev">0 ₾</div><div class="stat-s" id="s-payments">наличные 0 ₾ · карта 0 ₾</div></div>
         <div class="stat"><div class="stat-l">Открытый счёт</div><div class="stat-v" id="s-cur">0 ₾</div><div class="stat-s">в процессе</div></div>
         <div class="stat"><div class="stat-l">Сессий сегодня</div><div class="stat-v" id="s-sess">0</div><div class="stat-s">завершённых</div></div>
       </div>
@@ -431,7 +431,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
     <div class="page" id="page-history">
       <div class="panel">
         <div class="ptitle"><i class="ti ti-history"></i>История смены</div>
-        <div id="hist-container"><div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div></div>
+        <div style="display:flex;gap:6px;margin-bottom:12px"><button class="cat-btn active" onclick="setHistoryFilter('all',this)">Все</button><button class="cat-btn" onclick="setHistoryFilter('cash',this)">Наличные</button><button class="cat-btn" onclick="setHistoryFilter('card',this)">Карта</button><button class="cat-btn" onclick="setHistoryFilter('split',this)">Смешанная</button></div><div id="hist-container"><div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div></div>
       </div>
     </div>
     <div class="page" id="page-clients"><div class="panel"><div class="ptitle"><i class="ti ti-users"></i>Клиенты</div><input class="search-box" placeholder="Поиск по имени или телефону" oninput="renderClients(this.value)"><div id="clients-list"></div></div></div>
@@ -693,7 +693,7 @@ function tick(){
     const tt=document.getElementById('tot-'+r.id);if(tt)tt.textContent=fmt(calcCost(r.session));
   });
   updateStats();
-  if(document.getElementById('ov-sess').classList.contains('open'))refreshSessBody();
+  // Keep manual input intact while a session modal is open.
 }
 setInterval(tick,1000);
 updateClock();
@@ -704,6 +704,8 @@ function updateStats(){
   document.getElementById('s-rev').textContent=fmt(shiftRevenue);  // only closed
   document.getElementById('s-cur').textContent=fmt(rooms.reduce((a,r)=>a+(r.session?calcCost(r.session):0),0));
   document.getElementById('s-sess').textContent=shiftSessions;
+  const payments=history.reduce((a,h)=>{a.cash+=(h.payment?.cash||0)+(h.paymentMethod==='cash'?h.total:0);a.card+=(h.payment?.card||0)+(h.paymentMethod==='card'?h.total:0);return a},{cash:0,card:0});
+  const p=document.getElementById('s-payments');if(p)p.textContent=`наличные ${fmt(payments.cash)} · карта ${fmt(payments.card)}`;
   const rb=document.getElementById('res-badge');
   const n=bookings.filter(b=>b.date===todayISO()).length;
   rb.style.display=n?'':'none'; rb.textContent=n;
@@ -1053,12 +1055,15 @@ function renderDashboard(){
 }
 
 // ══════════════ HISTORY ══════════════
+let historyFilter='all';
+function setHistoryFilter(value,btn){historyFilter=value;document.querySelectorAll('#page-history .cat-btn').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');renderHistory();}
 function renderHistory(){
   const el=document.getElementById('hist-container');
-  if(!history.length){el.innerHTML='<div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет завершённых сессий</div>';return;}
-  el.innerHTML=`<table class="ht"><thead><tr><th>Зал/Стол</th><th>Клиент</th><th>Длительность</th><th>Меню</th><th>Итого</th><th>Время</th></tr></thead><tbody>
-    ${history.map(h=>`<tr>
-      <td style="font-weight:700;">${h.room}</td><td style="color:var(--t2);">${h.client}</td>
+  const rows=history.filter(h=>historyFilter==='all'||h.paymentMethod===historyFilter);
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:32px 0;color:var(--t3);font-size:12px;">Нет операций по этому фильтру</div>';return;}
+  el.innerHTML=`<table class="ht"><thead><tr><th>Зал/Стол</th><th>Клиент</th><th>Статус</th><th>Оплата</th><th>Длительность</th><th>Меню</th><th>Итого</th><th>Время</th></tr></thead><tbody>
+    ${rows.map(h=>`<tr>
+      <td style="font-weight:700;">${h.room}</td><td style="color:var(--t2);">${h.client}</td><td>${h.clientStatus||'—'}</td><td>${h.paymentMethod==='cash'?'Наличные':h.paymentMethod==='card'?'Карта':h.paymentMethod==='split'?'Смешанная':'—'}</td>
       <td class="hd">${h.duration}</td>
       <td style="color:var(--t3);font-size:10px;">${h.extras.length?h.extras.reduce((s,e)=>s+e.qty,0)+' поз.':'—'}</td>
       <td class="ha">${fmt(h.total)}</td>

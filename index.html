@@ -270,7 +270,13 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
 @media(max-width:640px){
   .sidebar{width:54px;}.sidebar .logo-title,.sidebar .logo-sub,.sidebar .nav-sec,.nav-item span,.sidebar-foot .clk-d{display:none;}
   .clk{font-size:13px;}.main{margin-left:54px;}
-  .rooms-grid{grid-template-columns:1fr;}
+  .content{padding:12px;}.topbar{padding:11px 12px;}.topbar-title{font-size:16px;}
+  .topbar .btn{padding:7px 9px;font-size:10px;}.rooms-grid{grid-template-columns:1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;gap:7px;}.stat{padding:10px;}.stat-v{font-size:18px;}
+  .panel{padding:12px;border-radius:14px;}.view-switch{gap:6px;}.date-nav{margin-left:0;width:100%;overflow-x:auto;padding-bottom:2px;}
+  .tip{font-size:10px;line-height:1.35;}.tl-wrap{margin-left:-2px;margin-right:-2px;}.tl{min-width:760px;}
+  .modal{padding:16px;width:calc(100vw - 20px);border-radius:18px;}.mf2{grid-template-columns:1fr;}.mactions{flex-wrap:wrap;}
+  .calendar-timeline{min-width:720px;}.cal-head,.cal-body{grid-template-columns:58px repeat(var(--room-cols),minmax(132px,1fr));gap:5px;}
 }
 </style>
 </head>
@@ -359,8 +365,7 @@ nav{padding:8px 7px;flex:1;overflow-y:auto;}
           Рабочее время: <b id="wh-display">15:00 — 02:00</b>. Серые ячейки — вне рабочего времени. Кликните на свободный слот для быстрой брони.
         </div>
         <div class="tl-wrap"><div class="tl" id="timeline"></div><div id="day-calendar" style="display:none"></div></div>
-        <div class="ptitle" style="margin-top:14px;"><i class="ti ti-list"></i>Все брони</div>
-        <div id="bookings-list"></div>
+        <div id="bookings-list" hidden></div>
       </div>
     </div>
 
@@ -1008,14 +1013,23 @@ function renderSchedule(){
         if(today===todayISO()&&rel<nowRel)return`<div class="tc past"></div>`;
         return`<div class="tc free work" data-room-id="${r.id}" data-slot-rel="${rel-workHours.open*60}" title="${pad(h)}:${pad(m)} — свободно"></div>`;
       })).join('');
-      return`<div class="tl-row" style="grid-template-columns:130px repeat(${ALL_H.length*4},1fr)"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
+      return`<div class="tl-row" data-room-id="${r.id}" style="grid-template-columns:130px repeat(${ALL_H.length*4},1fr)"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
     }).join('');
 
   // One delegated handler is more reliable than inline handlers on dozens of 15-minute cells.
   document.getElementById('timeline').onclick=e=>{
+    const row=e.target.closest('.tl-row');
+    if(!row||e.target.closest('.tl-rname'))return;
+    // Existing cards always keep their own edit/open action.
+    if(e.target.closest('.tc.reserved,.tc.busy,.tc.past,.tc.off'))return;
     const slot=e.target.closest('.tc.free[data-room-id]');
-    if(!slot)return;
-    quickBookAtRelative(+slot.dataset.roomId,+slot.dataset.slotRel);
+    if(slot){quickBookAtRelative(+slot.dataset.roomId,+slot.dataset.slotRel);return;}
+    // Clicking the thin gap between cells is also treated as a click on the nearest 15-minute slot.
+    const nameBox=row.querySelector('.tl-rname').getBoundingClientRect(),rowBox=row.getBoundingClientRect();
+    const width=rowBox.right-nameBox.right;
+    if(width<=0||e.clientX<nameBox.right||e.clientX>rowBox.right)return;
+    const rel=Math.floor(Math.max(0,Math.min(businessShiftMinutes()-1,(e.clientX-nameBox.right)/width*businessShiftMinutes()))/15)*15;
+    quickBookAtRelative(+row.dataset.roomId,rel);
   };
 
   document.getElementById('schedule-date').value=today;document.getElementById('schedule-title').textContent=`Расписание · ${new Date(today+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}`;

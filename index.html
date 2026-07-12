@@ -1006,10 +1006,17 @@ function renderSchedule(){
         if(res){const f=+res.from.slice(0,2)*60 + +res.from.slice(3),t=+res.to.slice(0,2)*60 + +res.to.slice(3),start=f<workHours.open?f+1440:f,end=(t<=f||t<workHours.open)?t+1440:t,cls=rel===start?' cont-start':rel+15>=end?' cont-end':' cont-mid';return`<div class="tc reserved${cls}" title="Бронь: ${res.client} ${res.from}–${res.to}" onclick="editBooking(${res.id})">${rel===start?`<span class="slot-label">${res.client} ${res.from}–${res.to}</span>`:''}</div>`}
         if(sess)return`<div class="tc busy" title="Занят сейчас" onclick="openBooking(${r.id})"></div>`;
         if(today===todayISO()&&rel<nowRel)return`<div class="tc past"></div>`;
-        return`<div class="tc free work" title="${pad(h)}:${pad(m)} — свободно" onclick="quickBook(${r.id},${h},${m})"></div>`;
+        return`<div class="tc free work" data-room-id="${r.id}" data-slot-rel="${rel-workHours.open*60}" title="${pad(h)}:${pad(m)} — свободно"></div>`;
       })).join('');
       return`<div class="tl-row" style="grid-template-columns:130px repeat(${ALL_H.length*4},1fr)"><div class="tl-rname" title="${r.name}">${r.name}</div>${cells}</div>`;
     }).join('');
+
+  // One delegated handler is more reliable than inline handlers on dozens of 15-minute cells.
+  document.getElementById('timeline').onclick=e=>{
+    const slot=e.target.closest('.tc.free[data-room-id]');
+    if(!slot)return;
+    quickBookAtRelative(+slot.dataset.roomId,+slot.dataset.slotRel);
+  };
 
   document.getElementById('schedule-date').value=today;document.getElementById('schedule-title').textContent=`Расписание · ${new Date(today+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}`;
   const all=bookings.slice().sort((a,b)=>(a.date+a.from).localeCompare(b.date+b.from));
